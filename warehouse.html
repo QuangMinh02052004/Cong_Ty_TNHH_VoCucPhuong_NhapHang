@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kho hàng - CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</title>
+    <link rel="stylesheet" href="css/styles.css?v=2.0">
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-top">
+                <h1 class="logo">CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</h1>
+                <div class="user-info">
+                    <span id="currentUser">User</span>
+                    <span class="separator">|</span>
+                    <a href="#" class="link" onclick="logout()">Thoát</a>
+                </div>
+            </div>
+            <nav class="navbar">
+                <a href="index.html" class="nav-item">Phòng vé</a>
+                <a href="warehouse.html" class="nav-item active">Kho hàng</a>
+                <a href="#" class="nav-item">Thống kê</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <h2>Kho hàng - Trạm: <span class="station-name" id="currentStationName">AN ĐỒNG</span></h2>
+                <p style="color: #6B7280; margin-top: 8px;">Hiển thị hàng hóa từ các trạm khác</p>
+            </div>
+
+            <section class="management-section">
+                <h3 class="section-title">Danh sách hàng hóa</h3>
+
+                <!-- Bảng danh sách hàng hóa từ các trạm khác -->
+                <div class="table-wrapper">
+                    <table class="data-table" id="warehouseTable">
+                        <thead>
+                            <tr>
+                                <th>Stt</th>
+                                <th>Mã</th>
+                                <th>Người gởi</th>
+                                <th>Điện thoại</th>
+                                <th>Người nhận</th>
+                                <th>Điện thoại</th>
+                                <th>Trạm gởi</th>
+                                <th>Trạm nhận</th>
+                                <th>Ngày gởi</th>
+                                <th>Xe</th>
+                                <th>Loại hàng</th>
+                                <th>Bảo hiểm</th>
+                                <th>Tổng VND</th>
+                                <th>Thanh toán</th>
+                                <th>Nhân viên nhận</th>
+                            </tr>
+                        </thead>
+                        <tbody id="warehouseTableBody">
+                            <!-- Dữ liệu sẽ được thêm bằng JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Thống kê kho hàng -->
+                <div class="statistics-container" id="warehouseStatistics">
+                    <!-- Thống kê sẽ được thêm bằng JavaScript -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="js/auth.js?v=3.0"></script>
+    <script type="module" src="js/warehouse.js?v=3.0"></script>
+</body>
+
+</html>

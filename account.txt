@@ -1,0 +1,7 @@
+👥 Tài khoản mặc định
+Admin:
+Username: admin
+Password: admin123
+Nhân viên:
+Username: lethanhtam
+Password: 123456
