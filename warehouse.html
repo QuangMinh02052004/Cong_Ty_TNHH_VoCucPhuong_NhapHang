@@ -20,7 +20,7 @@
                 </div>
             </div>
             <nav class="navbar">
-                <a href="index.html" class="nav-item">Phòng vé</a>
+                <a href="index.html" class="nav-item">Nhận hàng</a>
                 <a href="warehouse.html" class="nav-item active">Kho hàng</a>
                 <a href="#" class="nav-item">Thống kê</a>
             </nav>
@@ -30,11 +30,54 @@
     <main class="main-content">
         <div class="container">
             <div class="page-header">
-                <h2>Kho hàng - Trạm: <span class="station-name" id="currentStationName">AN ĐỒNG</span></h2>
+                <h2>Kho hàng - Trạm: <span class="station-name" id="currentStationName"></span></h2>
                 <p style="color: #6B7280; margin-top: 8px;">Hiển thị hàng hóa từ các trạm khác</p>
             </div>
 
             <section class="management-section">
+                <!-- Form tìm kiếm -->
+                <div class="search-section">
+                    <h3 class="section-title">Tìm kiếm</h3>
+                    <form id="searchForm" class="search-form">
+                        <div class="search-row">
+                            <div class="search-group">
+                                <input type="text" id="searchKeyword" name="searchKeyword"
+                                    placeholder="Tên, điện thoại hoặc mã hàng">
+                            </div>
+                            <div class="search-group">
+                                <label>Ngày:</label>
+                                <input type="datetime-local" id="searchDateFrom" name="searchDateFrom">
+                            </div>
+                            <div class="search-group">
+                                <label>-</label>
+                                <input type="datetime-local" id="searchDateTo" name="searchDateTo">
+                            </div>
+                            <div class="search-group">
+                                <select id="searchSenderStation" name="searchSenderStation">
+                                    <option value="">-- Trạm gửi --</option>
+                                    <!-- Options loaded from data/options.js -->
+                                </select>
+                            </div>
+                            <div class="search-group">
+                                <select id="searchVehicle" name="searchVehicle">
+                                    <option value="">-- Chọn xe --</option>
+                                    <!-- Options loaded from data/options.js -->
+                                </select>
+                            </div>
+                            <div class="search-group">
+                                <select id="searchProductType" name="searchProductType">
+                                    <option value="">-- Chọn loại hàng --</option>
+                                    <!-- Options loaded from data/options.js -->
+                                </select>
+                            </div>
+                            <div class="search-group">
+                                <button type="submit" class="btn btn-search">Tìm kiếm</button>
+                                <button type="button" class="btn btn-secondary" id="resetSearchBtn">Xóa bộ lọc</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
                 <h3 class="section-title">Danh sách hàng hóa</h3>
 
                 <!-- Bảng danh sách hàng hóa từ các trạm khác -->
@@ -53,7 +96,6 @@
                                 <th>Ngày gởi</th>
                                 <th>Xe</th>
                                 <th>Loại hàng</th>
-                                <th>Bảo hiểm</th>
                                 <th>Tổng VND</th>
                                 <th>Thanh toán</th>
                                 <th>Nhân viên nhận</th>
@@ -79,8 +121,8 @@
         </div>
     </footer>
 
-    <script type="module" src="js/auth.js?v=3.0"></script>
-    <script type="module" src="js/warehouse.js?v=3.0"></script>
+    <script type="module" src="js/auth.js?v=3.1"></script>
+    <script type="module" src="js/warehouse.js?v=3.1"></script>
 </body>
 
 </html>

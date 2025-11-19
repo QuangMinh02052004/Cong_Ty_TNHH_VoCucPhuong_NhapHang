@@ -222,6 +222,7 @@ export async function initializeDefaultUsers() {
                 password: 'admin123',
                 fullName: 'Quản trị viên',
                 role: 'admin',
+                station: '01 - AN ĐỒNG', // Trạm mặc định cho admin
                 active: true,
                 createdAt: new Date().toISOString()
             });
@@ -233,6 +234,7 @@ export async function initializeDefaultUsers() {
                 password: '123456',
                 fullName: 'Lê Thanh Tâm',
                 role: 'employee',
+                station: '01 - AN ĐỒNG', // Trạm mặc định
                 active: true,
                 createdAt: new Date().toISOString()
             });

@@ -3,8 +3,11 @@ import {
     getAllProducts
 } from './firebase-db.js';
 
+import { populateSelect, OPTIONS } from '../data/options.js';
+
 let allProducts = [];
 let currentUserStation = '';
+let searchFilters = {}; // Bộ lọc tìm kiếm
 
 // Khởi tạo
 document.addEventListener('DOMContentLoaded', async function () {
@@ -21,10 +24,17 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Lấy trạm của user hiện tại
     currentUserStation = currentUser.station || '';
 
-    // Hiển thị tên trạm
+    // Hiển thị tên trạm (bỏ số và dấu gạch ngang)
     if (currentUserStation) {
-        document.getElementById('currentStationName').textContent = currentUserStation;
+        // Ví dụ: "01 - AN ĐỒNG" -> "AN ĐỒNG"
+        const stationName = currentUserStation.includes(' - ')
+            ? currentUserStation.split(' - ')[1]
+            : currentUserStation;
+        document.getElementById('currentStationName').textContent = stationName;
     }
+
+    // Load search options
+    loadSearchOptions();
 
     // Load tất cả sản phẩm
     await loadAllProducts();
@@ -34,7 +44,43 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Render statistics
     renderWarehouseStatistics();
+
+    // Xử lý form tìm kiếm
+    document.getElementById('searchForm').addEventListener('submit', handleSearch);
+    document.getElementById('resetSearchBtn').addEventListener('click', resetSearch);
 });
+
+// Load options cho search dropdowns
+function loadSearchOptions() {
+    populateSelect('searchSenderStation', OPTIONS.stations);
+    populateSelect('searchVehicle', OPTIONS.vehicles);
+    populateSelect('searchProductType', OPTIONS.productTypes);
+}
+
+// Xử lý tìm kiếm
+function handleSearch(e) {
+    e.preventDefault();
+
+    searchFilters = {
+        keyword: document.getElementById('searchKeyword').value.trim().toLowerCase(),
+        dateFrom: document.getElementById('searchDateFrom').value,
+        dateTo: document.getElementById('searchDateTo').value,
+        senderStation: document.getElementById('searchSenderStation').value,
+        vehicle: document.getElementById('searchVehicle').value,
+        productType: document.getElementById('searchProductType').value
+    };
+
+    renderWarehouseTable();
+    renderWarehouseStatistics();
+}
+
+// Reset tìm kiếm
+function resetSearch() {
+    document.getElementById('searchForm').reset();
+    searchFilters = {};
+    renderWarehouseTable();
+    renderWarehouseStatistics();
+}
 
 // Load tất cả products từ Firestore
 async function loadAllProducts() {
@@ -45,17 +91,88 @@ async function loadAllProducts() {
 function renderWarehouseTable() {
     const tbody = document.getElementById('warehouseTableBody');
 
+    console.log('=== WAREHOUSE DEBUG ===');
+    console.log('Current Station:', currentUserStation);
+    console.log('Total products:', allProducts.length);
+
     // Filter: Chỉ hiển thị hàng có trạm nhận = trạm hiện tại
     // và trạm gửi khác trạm hiện tại (tức là từ trạm khác gửi đến)
-    const filteredProducts = allProducts.filter(product => {
-        // Lấy mã trạm từ station (ví dụ: "05 - XUÂN TRƯỜNG" -> "05")
-        const destinationStation = product.station || '';
-        const senderStation = getStationFromProductId(product.id);
+    let filteredProducts = allProducts.filter(product => {
+        // Nếu không có station của user, hiển thị tất cả
+        if (!currentUserStation) {
+            console.log('No current station - showing all');
+            return true;
+        }
 
-        // Hiển thị nếu: trạm nhận khác rỗng và bao gồm trạm hiện tại
-        return destinationStation.includes(currentUserStation.split(' - ')[0]) &&
-               !senderStation.includes(currentUserStation.split(' - ')[0]);
+        const destinationStation = product.station || ''; // Trạm nhận
+        const senderStation = product.senderStation || ''; // Trạm gửi
+
+        // Debug first few products
+        if (allProducts.indexOf(product) < 3) {
+            console.log(`Product ${product.id}: destination="${destinationStation}", sender="${senderStation}", current="${currentUserStation}"`);
+            console.log(`  Match: dest==current? ${destinationStation === currentUserStation}, sender!=current? ${senderStation !== currentUserStation}`);
+        }
+
+        // Chỉ hiển thị hàng có senderStation VÀ destination = trạm hiện tại VÀ sender khác trạm hiện tại
+        if (!senderStation) {
+            return false; // Không hiển thị hàng không có senderStation
+        }
+
+        // Hiển thị nếu: trạm nhận = trạm hiện tại VÀ trạm gửi khác trạm hiện tại
+        return destinationStation === currentUserStation &&
+               senderStation !== currentUserStation;
     });
+
+    console.log('Products after filter:', filteredProducts.length);
+    console.log('=====================');
+
+    // Apply search filters
+    if (Object.keys(searchFilters).length > 0) {
+        filteredProducts = filteredProducts.filter(product => {
+            // Filter by keyword (mã, tên người gửi, tên người nhận, sđt)
+            if (searchFilters.keyword) {
+                const keyword = searchFilters.keyword;
+                const matchId = (product.id || '').toLowerCase().includes(keyword);
+                const matchSender = (product.senderName || '').toLowerCase().includes(keyword);
+                const matchReceiver = (product.receiverName || '').toLowerCase().includes(keyword);
+                const matchSenderPhone = (product.senderPhone || '').toLowerCase().includes(keyword);
+                const matchReceiverPhone = (product.receiverPhone || '').toLowerCase().includes(keyword);
+
+                if (!matchId && !matchSender && !matchReceiver && !matchSenderPhone && !matchReceiverPhone) {
+                    return false;
+                }
+            }
+
+            // Filter by date range
+            if (searchFilters.dateFrom) {
+                const productDate = new Date(product.sendDate);
+                const fromDate = new Date(searchFilters.dateFrom);
+                if (productDate < fromDate) return false;
+            }
+            if (searchFilters.dateTo) {
+                const productDate = new Date(product.sendDate);
+                const toDate = new Date(searchFilters.dateTo);
+                if (productDate > toDate) return false;
+            }
+
+            // Filter by sender station
+            if (searchFilters.senderStation && product.senderStation !== searchFilters.senderStation) {
+                return false;
+            }
+
+            // Filter by vehicle
+            if (searchFilters.vehicle && product.vehicle !== searchFilters.vehicle) {
+                return false;
+            }
+
+            // Filter by product type
+            if (searchFilters.productType && product.productType !== searchFilters.productType) {
+                return false;
+            }
+
+            return true;
+        });
+    }
 
     if (filteredProducts.length === 0) {
         tbody.innerHTML = `
@@ -77,9 +194,6 @@ function renderWarehouseTable() {
             ? '<span class="status-badge status-active">Đã thu</span>'
             : '<span class="status-badge status-inactive">Chưa thu</span>';
 
-        // Trích xuất trạm gởi từ product ID
-        const senderStation = getStationFromProductId(product.id);
-
         return `
             <tr>
                 <td>${index + 1}</td>
@@ -88,7 +202,7 @@ function renderWarehouseTable() {
                 <td>${product.senderPhone || '-'}</td>
                 <td>${product.receiverName}</td>
                 <td>${product.receiverPhone}</td>
-                <td>${senderStation}</td>
+                <td>${product.senderStation || '-'}</td>
                 <td>${product.station}</td>
                 <td>${sendDate}</td>
                 <td>${product.vehicle || '-'}</td>
@@ -102,34 +216,24 @@ function renderWarehouseTable() {
     }).join('');
 }
 
-// Lấy trạm từ product ID (format: YYMMDD.SSNN)
-function getStationFromProductId(productId) {
-    if (!productId) return '-';
-
-    // Tách phần sau dấu chấm (SSNN)
-    const parts = productId.split('.');
-    if (parts.length < 2) return '-';
-
-    // Lấy 2 số đầu tiên (SS) - mã trạm
-    const stationCode = parts[1].substring(0, 2);
-
-    // Tìm tên trạm từ mã
-    // Giả sử OPTIONS.stations có format "05 - XUÂN TRƯỜNG"
-    // Ta cần import OPTIONS để tra cứu
-    return stationCode;
-}
-
 // Render statistics
 function renderWarehouseStatistics() {
     const statsElement = document.getElementById('warehouseStatistics');
 
-    // Filter products for current station
+    // Filter products for current station (same logic as table)
     const filteredProducts = allProducts.filter(product => {
-        const destinationStation = product.station || '';
-        const senderStation = getStationFromProductId(product.id);
+        if (!currentUserStation) return true;
 
-        return destinationStation.includes(currentUserStation.split(' - ')[0]) &&
-               !senderStation.includes(currentUserStation.split(' - ')[0]);
+        const destinationStation = product.station || '';
+        const senderStation = product.senderStation || '';
+
+        // Chỉ tính sản phẩm có senderStation
+        if (!senderStation) {
+            return false;
+        }
+
+        return destinationStation === currentUserStation &&
+               senderStation !== currentUserStation;
     });
 
     const totalShipments = filteredProducts.length;

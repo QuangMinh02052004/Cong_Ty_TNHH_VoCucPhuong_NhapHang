@@ -50,12 +50,13 @@ async function handleLogin(e) {
             return;
         }
 
-        // Lưu thông tin đăng nhập
+        // Lưu thông tin đăng nhập (BẮT BUỘC phải lưu station!)
         const sessionData = {
             userId: user.id,
             username: user.username,
             fullName: user.fullName,
             role: user.role,
+            station: user.station || '', // Trạm của user
             loginTime: new Date().toISOString()
         };
 
@@ -118,6 +119,17 @@ function updateUIWithUser(user) {
     const userElement = document.getElementById('currentUser');
     if (userElement) {
         userElement.textContent = user.fullName;
+    }
+
+    // Cập nhật tên trạm trong header
+    const stationNameElement = document.querySelector('.station-name');
+    if (stationNameElement && user.station) {
+        // Bỏ số và dấu gạch ngang, chỉ lấy tên trạm
+        // Ví dụ: "01 - AN ĐỒNG" -> "AN ĐỒNG"
+        const stationName = user.station.includes(' - ')
+            ? user.station.split(' - ')[1]
+            : user.station;
+        stationNameElement.textContent = stationName;
     }
 
     // Nếu là admin, hiển thị menu quản lý tài khoản

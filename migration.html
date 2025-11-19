@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migration - Fix senderStation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #17a2b8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        #log {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        .log-success {
+            color: #28a745;
+        }
+
+        .log-error {
+            color: #dc3545;
+        }
+
+        .log-info {
+            color: #17a2b8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔧 Migration Tool - Cập nhật senderStation</h1>
+
+        <div class="warning">
+            <strong>⚠️ Cảnh báo:</strong>
+            <p>Script này sẽ cập nhật tất cả products cũ không có <code>senderStation</code>.</p>
+            <p><strong>LƯU Ý:</strong> Vì không biết trạm nào đã gửi hàng cũ, script sẽ <strong>XÓA TẤT CẢ</strong> products không có senderStation.</p>
+        </div>
+
+        <div class="info">
+            <strong>ℹ️ Khuyến nghị:</strong>
+            <p>Nếu đây là dữ liệu test, bạn nên xóa hết và tạo mới.</p>
+            <p>Nếu đây là dữ liệu thật, liên hệ developer để migration thủ công.</p>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button class="btn btn-danger" onclick="deleteOldProducts()">
+                🗑️ Xóa tất cả products cũ (không có senderStation)
+            </button>
+            <button class="btn" onclick="location.href='index.html'">
+                ← Quay lại
+            </button>
+        </div>
+
+        <div id="log" style="display: none;">
+            <div id="logContent"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import {
+            getAllProducts,
+            deleteProduct
+        } from './js/firebase-db.js';
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const logContent = document.getElementById('logContent');
+            logDiv.style.display = 'block';
+
+            const span = document.createElement('div');
+            span.className = `log-${type}`;
+            span.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContent.appendChild(span);
+
+            // Auto scroll to bottom
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        window.deleteOldProducts = async function() {
+            if (!confirm('⚠️ BẠN CHẮC CHẮN MUỐN XÓA TẤT CẢ PRODUCTS CŨ?\n\nHành động này KHÔNG THỂ HOÀN TÁC!')) {
+                return;
+            }
+
+            if (!confirm('⚠️ XÁC NHẬN LẦN CUỐI!\n\nTất cả products không có senderStation sẽ bị XÓA VĨNH VIỄN!')) {
+                return;
+            }
+
+            log('=== BẮT ĐẦU XÓA PRODUCTS CŨ ===', 'info');
+
+            try {
+                const products = await getAllProducts();
+                log(`Tổng số products: ${products.length}`, 'info');
+
+                const oldProducts = products.filter(p => !p.senderStation);
+                log(`Products cũ cần xóa: ${oldProducts.length}`, 'info');
+
+                if (oldProducts.length === 0) {
+                    log('✅ Không có products cũ nào cần xóa!', 'success');
+                    alert('Không có products cũ nào cần xóa!');
+                    return;
+                }
+
+                let deletedCount = 0;
+                let errorCount = 0;
+
+                for (const product of oldProducts) {
+                    try {
+                        await deleteProduct(product.id);
+                        deletedCount++;
+                        log(`✅ Đã xóa product ${product.id}`, 'success');
+                    } catch (error) {
+                        errorCount++;
+                        log(`❌ Lỗi khi xóa product ${product.id}: ${error.message}`, 'error');
+                    }
+                }
+
+                log('=== KẾT QUẢ ===', 'info');
+                log(`✅ Đã xóa: ${deletedCount} products`, 'success');
+                log(`❌ Lỗi: ${errorCount} products`, 'error');
+                log('=============', 'info');
+
+                alert(`Hoàn tất!\nĐã xóa: ${deletedCount} products\nLỗi: ${errorCount} products\n\nBây giờ bạn có thể tạo đơn hàng mới!`);
+
+            } catch (error) {
+                log(`❌ Lỗi: ${error.message}`, 'error');
+                alert('Có lỗi xảy ra! Xem log để biết chi tiết.');
+            }
+        };
+    </script>
+</body>
+
+</html>

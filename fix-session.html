@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Fix Session - Cập nhật Station</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .success {
+            color: #28a745;
+            margin-top: 20px;
+        }
+        .info {
+            background: #d1ecf1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix Session Storage</h1>
+
+        <div class="info">
+            <strong>Vấn đề:</strong> Session storage cũ không có field "station", nên tên trạm không hiển thị.
+            <br><br>
+            <strong>Giải pháp:</strong> Click nút bên dưới để clear session và logout. Sau đó login lại.
+        </div>
+
+        <button class="btn" onclick="clearAndLogout()">
+            🗑️ Clear Session & Logout
+        </button>
+
+        <button class="btn" onclick="location.href='index.html'">
+            ← Quay lại
+        </button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function clearAndLogout() {
+            // Clear all storage
+            sessionStorage.clear();
+            localStorage.clear();
+
+            document.getElementById('result').innerHTML = `
+                <div class="success">
+                    <h3>✅ Đã clear session!</h3>
+                    <p>Đang chuyển về trang login...</p>
+                </div>
+            `;
+
+            // Redirect to login after 1 second
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

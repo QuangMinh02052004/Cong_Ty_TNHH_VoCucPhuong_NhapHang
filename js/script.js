@@ -10,11 +10,12 @@ import {
 } from './firebase-db.js';
 
 // Import options data
-import { loadAllOptions } from '../data/options.js';
+import { loadAllOptions, populateSelect, OPTIONS } from '../data/options.js';
 
 let products = [];
 let editingProductId = null;
 let unsubscribeProducts = null;
+let searchFilters = {}; // Bộ lọc tìm kiếm
 
 // Khởi tạo khi tải trang
 document.addEventListener('DOMContentLoaded', async function () {
@@ -30,12 +31,17 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Load options cho các dropdown
     loadAllOptions();
+    loadSearchOptions();
 
     // Load dữ liệu từ Firestore với real-time listener
     await loadProducts();
 
     // Sinh mã hàng tự động
     generateProductId();
+
+    // Xử lý form tìm kiếm
+    document.getElementById('searchForm').addEventListener('submit', handleSearch);
+    document.getElementById('resetSearchBtn').addEventListener('click', resetSearch);
 
     // Lắng nghe sự thay đổi của trạm để sinh mã tự động
     document.getElementById('station').addEventListener('change', async function () {
@@ -46,8 +52,44 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
-    // Xử lý submit form
-    document.getElementById('productForm').addEventListener('submit', handleSubmit);
+    // Xử lý submit form - Hiện modal thay vì submit trực tiếp
+    document.getElementById('productForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        showConfirmModal();
+    });
+
+    // Xử lý phím Enter trong form
+    document.getElementById('productForm').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            showConfirmModal();
+        }
+    });
+
+    // Xử lý phím ESC để đóng modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeConfirmModal();
+        }
+    });
+
+    // Xử lý các nút trong modal
+    document.getElementById('btnSave').addEventListener('click', function() {
+        handleSubmit(false);
+    });
+
+    document.getElementById('btnSaveAndPrint').addEventListener('click', function() {
+        handleSubmit(true);
+    });
+
+    document.getElementById('btnCancel').addEventListener('click', closeConfirmModal);
+
+    // Đóng modal khi click bên ngoài
+    document.getElementById('confirmModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeConfirmModal();
+        }
+    });
 
     // Xử lý nút làm mới
     document.getElementById('resetBtn').addEventListener('click', resetForm);
@@ -63,6 +105,12 @@ function updateUIWithUser(user) {
         userElement.textContent = user.fullName;
     }
 
+    // Hiển thị tên trạm của user
+    const stationNameElement = document.querySelector('.station-name');
+    if (stationNameElement && user.station) {
+        stationNameElement.textContent = user.station;
+    }
+
     // Nếu là admin, hiển thị menu quản lý tài khoản
     if (user.role === 'admin') {
         const navbar = document.querySelector('.navbar');
@@ -74,6 +122,36 @@ function updateUIWithUser(user) {
             navbar.appendChild(adminLink);
         }
     }
+}
+
+// Load options cho search dropdowns
+function loadSearchOptions() {
+    populateSelect('searchStation', OPTIONS.stations);
+    populateSelect('searchVehicle', OPTIONS.vehicles);
+    populateSelect('searchProductType', OPTIONS.productTypes);
+}
+
+// Xử lý tìm kiếm
+function handleSearch(e) {
+    e.preventDefault();
+
+    searchFilters = {
+        keyword: document.getElementById('searchKeyword').value.trim().toLowerCase(),
+        dateFrom: document.getElementById('searchDateFrom').value,
+        dateTo: document.getElementById('searchDateTo').value,
+        station: document.getElementById('searchStation').value,
+        vehicle: document.getElementById('searchVehicle').value,
+        productType: document.getElementById('searchProductType').value
+    };
+
+    renderTable();
+}
+
+// Reset tìm kiếm
+function resetSearch() {
+    document.getElementById('searchForm').reset();
+    searchFilters = {};
+    renderTable();
 }
 
 // Hàm sinh mã hàng tự động theo trạm và ngày
@@ -148,9 +226,25 @@ function getCurrentDateTime() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
+// Hiện modal xác nhận
+function showConfirmModal() {
+    // Kiểm tra validation trước khi hiện modal
+    const form = document.getElementById('productForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    document.getElementById('confirmModal').classList.add('show');
+}
+
+// Đóng modal xác nhận
+function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.remove('show');
+}
+
 // Xử lý submit form
-async function handleSubmit(e) {
-    e.preventDefault();
+async function handleSubmit(shouldPrint = false) {
 
     const station = document.getElementById('station').value;
 
@@ -188,13 +282,15 @@ async function handleSubmit(e) {
         senderPhone: document.getElementById('senderPhone').value.trim(),
         receiverName: document.getElementById('receiverName').value.trim(),
         receiverPhone: document.getElementById('receiverPhone').value.trim(),
-        station: station,
+        senderStation: currentUser.station || '', // Trạm gửi hàng (trạm của user hiện tại)
+        station: station, // Trạm nhận hàng
         vehicle: document.getElementById('vehicle').value,
         productType: document.getElementById('productType').value.trim(),
         insurance: parseInt(document.getElementById('insurance').value) || 0,
         totalAmount: totalAmount,
         paymentStatus: paymentStatus,
         employee: currentUser ? currentUser.fullName : 'Unknown',
+        createdBy: currentUser ? currentUser.fullName : 'Unknown',
         sendDate: getCurrentDateTime()
     };
 
@@ -219,8 +315,189 @@ async function handleSubmit(e) {
     }
 
     if (result.success) {
+        closeConfirmModal();
         resetForm();
+
+        // In biên lai nếu người dùng chọn
+        if (shouldPrint) {
+            printReceipt(formData);
+        }
     }
+}
+
+// In biên lai
+function printReceipt(productData) {
+    const currentUser = getCurrentUser();
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Biên lai - ${productData.id}</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                body {
+                    font-family: 'Courier New', monospace;
+                    padding: 20px;
+                    font-size: 14px;
+                }
+                .receipt {
+                    max-width: 400px;
+                    margin: 0 auto;
+                    border: 2px solid #000;
+                    padding: 20px;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 20px;
+                    border-bottom: 2px dashed #000;
+                    padding-bottom: 15px;
+                }
+                .header h1 {
+                    font-size: 18px;
+                    margin-bottom: 5px;
+                }
+                .header p {
+                    font-size: 12px;
+                    margin: 3px 0;
+                }
+                .title {
+                    text-align: center;
+                    font-size: 16px;
+                    font-weight: bold;
+                    margin: 15px 0;
+                }
+                .info-row {
+                    display: flex;
+                    justify-content: space-between;
+                    margin: 8px 0;
+                    padding: 5px 0;
+                }
+                .label {
+                    font-weight: bold;
+                }
+                .divider {
+                    border-top: 1px dashed #000;
+                    margin: 15px 0;
+                }
+                .total {
+                    font-size: 16px;
+                    font-weight: bold;
+                    text-align: right;
+                    margin-top: 15px;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 20px;
+                    padding-top: 15px;
+                    border-top: 2px dashed #000;
+                    font-size: 12px;
+                }
+                @media print {
+                    body {
+                        padding: 0;
+                    }
+                    .no-print {
+                        display: none;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="receipt">
+                <div class="header">
+                    <h1>CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</h1>
+                    <p>Địa chỉ: [Địa chỉ công ty]</p>
+                    <p>Hotline: [Số điện thoại]</p>
+                </div>
+
+                <div class="title">BIÊN LAI GỬI HÀNG</div>
+
+                <div class="info-row">
+                    <span class="label">Mã đơn:</span>
+                    <span>${productData.id}</span>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="info-row">
+                    <span class="label">Người gửi:</span>
+                    <span>${productData.senderName || '-'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">SĐT gửi:</span>
+                    <span>${productData.senderPhone || '-'}</span>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="info-row">
+                    <span class="label">Người nhận:</span>
+                    <span>${productData.receiverName}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">SĐT nhận:</span>
+                    <span>${productData.receiverPhone}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Trạm nhận:</span>
+                    <span>${productData.station}</span>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="info-row">
+                    <span class="label">Loại hàng:</span>
+                    <span>${productData.productType}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Xe:</span>
+                    <span>${productData.vehicle || '-'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="label">Bảo hiểm:</span>
+                    <span>${formatCurrency(productData.insurance)}đ</span>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="total">
+                    Tổng cước: ${formatCurrency(productData.totalAmount)}đ
+                </div>
+
+                <div class="footer">
+                    <p>Ngày: ${new Date().toLocaleDateString('vi-VN')}</p>
+                    <p>Nhân viên: ${currentUser.fullName}</p>
+                    <p>---</p>
+                    <p>Cảm ơn quý khách!</p>
+                </div>
+            </div>
+
+            <div class="no-print" style="text-align: center; margin-top: 20px;">
+                <button onclick="window.print()" style="padding: 10px 30px; font-size: 16px; cursor: pointer;">In biên lai</button>
+                <button onclick="window.close()" style="padding: 10px 30px; font-size: 16px; cursor: pointer; margin-left: 10px;">Đóng</button>
+            </div>
+
+            <script>
+                // Tự động in khi load
+                window.onload = function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 250);
+                };
+            </script>
+        </body>
+        </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
 }
 
 // Reset form
@@ -252,8 +529,88 @@ async function loadProducts() {
 // Render bảng dữ liệu
 function renderTable() {
     const tbody = document.getElementById('productTableBody');
+    const currentUser = getCurrentUser();
 
-    if (products.length === 0) {
+    console.log('=== RENDER TABLE DEBUG ===');
+    console.log('Current User:', currentUser);
+    console.log('Current Station:', currentUser?.station);
+    console.log('Total products before filter:', products.length);
+
+    // Filter: Chỉ hiển thị hàng do trạm hiện tại gửi
+    let filteredProducts = products.filter(product => {
+        // Nếu user không có station, hiển thị tất cả (cho admin)
+        if (!currentUser || !currentUser.station) {
+            console.log('No station filter (admin mode)');
+            return true;
+        }
+
+        // Debug: Log first few products to see their senderStation
+        if (products.indexOf(product) < 3) {
+            console.log(`Product ${product.id}: senderStation="${product.senderStation}", currentStation="${currentUser.station}", match=${product.senderStation === currentUser.station}`);
+        }
+
+        // Chỉ hiển thị hàng có senderStation được set VÀ bằng trạm hiện tại
+        // Nếu senderStation không tồn tại hoặc rỗng, không hiển thị
+        if (!product.senderStation) {
+            return false;
+        }
+
+        // So sánh chính xác senderStation với station của user hiện tại
+        return product.senderStation === currentUser.station;
+    });
+
+    console.log('Products after station filter:', filteredProducts.length);
+    console.log('=======================');
+
+    // Apply search filters
+    if (Object.keys(searchFilters).length > 0) {
+        filteredProducts = filteredProducts.filter(product => {
+            // Filter by keyword (mã, tên người gửi, tên người nhận, sđt)
+            if (searchFilters.keyword) {
+                const keyword = searchFilters.keyword;
+                const matchId = (product.id || '').toLowerCase().includes(keyword);
+                const matchSender = (product.senderName || '').toLowerCase().includes(keyword);
+                const matchReceiver = (product.receiverName || '').toLowerCase().includes(keyword);
+                const matchSenderPhone = (product.senderPhone || '').toLowerCase().includes(keyword);
+                const matchReceiverPhone = (product.receiverPhone || '').toLowerCase().includes(keyword);
+
+                if (!matchId && !matchSender && !matchReceiver && !matchSenderPhone && !matchReceiverPhone) {
+                    return false;
+                }
+            }
+
+            // Filter by date range
+            if (searchFilters.dateFrom) {
+                const productDate = new Date(product.sendDate);
+                const fromDate = new Date(searchFilters.dateFrom);
+                if (productDate < fromDate) return false;
+            }
+            if (searchFilters.dateTo) {
+                const productDate = new Date(product.sendDate);
+                const toDate = new Date(searchFilters.dateTo);
+                if (productDate > toDate) return false;
+            }
+
+            // Filter by station
+            if (searchFilters.station && product.station !== searchFilters.station) {
+                return false;
+            }
+
+            // Filter by vehicle
+            if (searchFilters.vehicle && product.vehicle !== searchFilters.vehicle) {
+                return false;
+            }
+
+            // Filter by product type
+            if (searchFilters.productType && product.productType !== searchFilters.productType) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    if (filteredProducts.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="15" style="text-align: center; padding: 30px; color: #9ca3af;">
@@ -261,11 +618,11 @@ function renderTable() {
                 </td>
             </tr>
         `;
-        updateStatistics();
+        updateStatistics(filteredProducts);
         return;
     }
 
-    tbody.innerHTML = products.map((product, index) => {
+    tbody.innerHTML = filteredProducts.map((product, index) => {
         const formattedDate = formatDateTime(product.sendDate || new Date().toISOString());
         const formattedAmount = formatCurrency(product.totalAmount || 0);
 
@@ -300,20 +657,35 @@ function renderTable() {
     }).join('');
 
     // Cập nhật thống kê
-    updateStatistics();
+    updateStatistics(filteredProducts);
 }
 
 // Cập nhật thống kê
-function updateStatistics() {
-    // Tính toán các chỉ số
-    const totalShipments = products.length;
+function updateStatistics(filteredProducts = null) {
+    // Nếu không truyền vào, lấy products đã filter theo station
+    if (!filteredProducts) {
+        const currentUser = getCurrentUser();
+        filteredProducts = products.filter(product => {
+            if (!currentUser || !currentUser.station) {
+                return true;
+            }
+            // Chỉ tính sản phẩm có senderStation được set VÀ bằng trạm hiện tại
+            if (!product.senderStation) {
+                return false;
+            }
+            return product.senderStation === currentUser.station;
+        });
+    }
 
-    const paidProducts = products.filter(p => {
+    // Tính toán các chỉ số
+    const totalShipments = filteredProducts.length;
+
+    const paidProducts = filteredProducts.filter(p => {
         const status = p.paymentStatus || (p.totalAmount >= 10000 ? 'paid' : 'unpaid');
         return status === 'paid';
     });
 
-    const unpaidProducts = products.filter(p => {
+    const unpaidProducts = filteredProducts.filter(p => {
         const status = p.paymentStatus || (p.totalAmount >= 10000 ? 'paid' : 'unpaid');
         return status === 'unpaid';
     });

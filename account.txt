@@ -5,3 +5,8 @@ Password: admin123
 Nhân viên:
 Username: lethanhtam
 Password: 123456
+
+pkill -f "python.*http.server"
+
+
+python3 -m http.server 8000
