@@ -666,3 +666,63 @@ body {
         opacity: 1;
     }
 }
+
+/* Delivery Status Styles */
+.delivery-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.status-delivered {
+    background-color: #D1FAE5;
+    color: #065F46;
+}
+
+.status-pending {
+    background-color: #FEF3C7;
+    color: #92400E;
+}
+
+/* Delivery Action Buttons */
+.delivery-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.btn-deliver {
+    padding: 4px 12px;
+    font-size: 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn-mark-delivered {
+    background-color: #10B981;
+    color: white;
+}
+
+.btn-mark-delivered:hover {
+    background-color: #059669;
+}
+
+.btn-mark-pending {
+    background-color: #F59E0B;
+    color: white;
+}
+
+.btn-mark-pending:hover {
+    background-color: #D97706;
+}
+
+.btn-deliver:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

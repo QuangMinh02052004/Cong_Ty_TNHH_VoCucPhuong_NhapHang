@@ -1,6 +1,7 @@
 // Warehouse Module - Hiển thị hàng hóa từ các trạm khác
 import {
-    getAllProducts
+    getAllProducts,
+    updateProduct
 } from './firebase-db.js';
 
 import { populateSelect, OPTIONS } from '../data/options.js';
@@ -82,6 +83,18 @@ function resetSearch() {
     renderWarehouseStatistics();
 }
 
+// Kiểm tra xem sản phẩm có phải từ hôm nay không
+function isToday(dateString) {
+    if (!dateString) return false;
+
+    const productDate = new Date(dateString);
+    const today = new Date();
+
+    return productDate.getDate() === today.getDate() &&
+           productDate.getMonth() === today.getMonth() &&
+           productDate.getFullYear() === today.getFullYear();
+}
+
 // Load tất cả products từ Firestore
 async function loadAllProducts() {
     allProducts = await getAllProducts();
@@ -116,6 +129,11 @@ function renderWarehouseTable() {
         // Chỉ hiển thị hàng có senderStation VÀ destination = trạm hiện tại VÀ sender khác trạm hiện tại
         if (!senderStation) {
             return false; // Không hiển thị hàng không có senderStation
+        }
+
+        // Chỉ hiển thị hàng nhập hôm nay
+        if (!isToday(product.sendDate) && !isToday(product.createdAt)) {
+            return false;
         }
 
         // Hiển thị nếu: trạm nhận = trạm hiện tại VÀ trạm gửi khác trạm hiện tại
@@ -177,7 +195,7 @@ function renderWarehouseTable() {
     if (filteredProducts.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="15" style="text-align: center; padding: 30px; color: #9ca3af;">
+                <td colspan="16" style="text-align: center; padding: 30px; color: #9ca3af;">
                     Chưa có hàng hóa từ trạm khác.
                 </td>
             </tr>
@@ -194,6 +212,14 @@ function renderWarehouseTable() {
             ? '<span class="status-badge status-active">Đã thu</span>'
             : '<span class="status-badge status-inactive">Chưa thu</span>';
 
+        const deliveryStatus = product.deliveryStatus || 'pending';
+        const deliveryStatusText = deliveryStatus === 'delivered' ? 'Đã giao' : 'Chưa giao';
+        const deliveryStatusClass = deliveryStatus === 'delivered' ? 'status-delivered' : 'status-pending';
+
+        const deliveryActions = deliveryStatus === 'delivered'
+            ? `<button class="btn-deliver btn-mark-pending" onclick="updateDeliveryStatus('${product.id}', 'pending')">Chưa giao</button>`
+            : `<button class="btn-deliver btn-mark-delivered" onclick="updateDeliveryStatus('${product.id}', 'delivered')">Đã giao</button>`;
+
         return `
             <tr>
                 <td>${index + 1}</td>
@@ -202,15 +228,16 @@ function renderWarehouseTable() {
                 <td>${product.senderPhone || '-'}</td>
                 <td>${product.receiverName}</td>
                 <td>${product.receiverPhone}</td>
-                <td>${product.senderStation || '-'}</td>
-                <td>${product.station}</td>
+                <td>${formatStationName(product.senderStation || '-')}</td>
+                <td>${formatStationName(product.station)}</td>
                 <td>${sendDate}</td>
                 <td>${product.vehicle || '-'}</td>
                 <td>${product.productType}</td>
-                <td>${formatCurrency(product.insurance)}</td>
                 <td>${formatCurrency(product.totalAmount)}</td>
                 <td>${paymentBadge}</td>
                 <td>${product.createdBy || '-'}</td>
+                <td><span class="delivery-status ${deliveryStatusClass}">${deliveryStatusText}</span></td>
+                <td>${deliveryActions}</td>
             </tr>
         `;
     }).join('');
@@ -229,6 +256,11 @@ function renderWarehouseStatistics() {
 
         // Chỉ tính sản phẩm có senderStation
         if (!senderStation) {
+            return false;
+        }
+
+        // Chỉ tính hàng nhập hôm nay
+        if (!isToday(product.sendDate) && !isToday(product.createdAt)) {
             return false;
         }
 
@@ -265,5 +297,30 @@ function formatCurrency(amount) {
     return new Intl.NumberFormat('vi-VN').format(amount || 0);
 }
 
+// Format station name - remove number prefix
+function formatStationName(station) {
+    if (!station || station === '-') return station;
+    return station.includes(' - ') ? station.split(' - ')[1] : station;
+}
+
+// Update delivery status
+async function updateDeliveryStatus(productId, status) {
+    try {
+        await updateProduct(productId, { deliveryStatus: status });
+
+        // Reload products and re-render
+        await loadAllProducts();
+        renderWarehouseTable();
+        renderWarehouseStatistics();
+
+        const statusText = status === 'delivered' ? 'đã giao' : 'chưa giao';
+        alert(`Đã cập nhật trạng thái thành "${statusText}"`);
+    } catch (error) {
+        console.error('Error updating delivery status:', error);
+        alert('Có lỗi khi cập nhật trạng thái. Vui lòng thử lại.');
+    }
+}
+
 // Export functions to global scope if needed
 window.loadAllProducts = loadAllProducts;
+window.updateDeliveryStatus = updateDeliveryStatus;

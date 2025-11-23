@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kho hàng - CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</title>
+    <title>Thống kê - CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</title>
     <link rel="stylesheet" href="css/styles.css?v=2.0">
 </head>
 
@@ -21,8 +21,8 @@
             </div>
             <nav class="navbar">
                 <a href="index.html" class="nav-item">Nhận hàng</a>
-                <a href="warehouse.html" class="nav-item active">Kho hàng</a>
-                <a href="statistics.html" class="nav-item">Thống kê</a>
+                <a href="warehouse.html" class="nav-item">Kho hàng</a>
+                <a href="statistics.html" class="nav-item active">Thống kê</a>
             </nav>
         </div>
     </header>
@@ -30,8 +30,8 @@
     <main class="main-content">
         <div class="container">
             <div class="page-header">
-                <h2>Kho hàng - Trạm: <span class="station-name" id="currentStationName"></span></h2>
-                <p style="color: #6B7280; margin-top: 8px;">Hiển thị hàng hóa từ các trạm khác</p>
+                <h2>Thống kê tổng hợp</h2>
+                <p style="color: #6B7280; margin-top: 8px;">Tổng hợp tất cả hàng hóa từ mọi trạm</p>
             </div>
 
             <section class="management-section">
@@ -53,21 +53,20 @@
                                 <input type="datetime-local" id="searchDateTo" name="searchDateTo">
                             </div>
                             <div class="search-group">
-                                <select id="searchSenderStation" name="searchSenderStation">
-                                    <option value="">-- Trạm gửi --</option>
-                                    <!-- Options loaded from data/options.js -->
+                                <select id="searchStation" name="searchStation">
+                                    <option value="">-- Chọn trạm gửi --</option>
                                 </select>
                             </div>
                             <div class="search-group">
-                                <select id="searchVehicle" name="searchVehicle">
-                                    <option value="">-- Chọn xe --</option>
-                                    <!-- Options loaded from data/options.js -->
+                                <select id="searchDestStation" name="searchDestStation">
+                                    <option value="">-- Chọn trạm nhận --</option>
                                 </select>
                             </div>
                             <div class="search-group">
-                                <select id="searchProductType" name="searchProductType">
-                                    <option value="">-- Chọn loại hàng --</option>
-                                    <!-- Options loaded from data/options.js -->
+                                <select id="searchDeliveryStatus" name="searchDeliveryStatus">
+                                    <option value="">-- Trạng thái giao --</option>
+                                    <option value="delivered">Đã giao</option>
+                                    <option value="pending">Chưa giao</option>
                                 </select>
                             </div>
                             <div class="search-group">
@@ -78,40 +77,37 @@
                     </form>
                 </div>
 
-                <h3 class="section-title">Danh sách hàng hóa</h3>
-
-                <!-- Bảng danh sách hàng hóa từ các trạm khác -->
-                <div class="table-wrapper">
-                    <table class="data-table" id="warehouseTable">
-                        <thead>
-                            <tr>
-                                <th>Stt</th>
-                                <th>Mã</th>
-                                <th>Người gởi</th>
-                                <th>Điện thoại</th>
-                                <th>Người nhận</th>
-                                <th>Điện thoại</th>
-                                <th>Trạm gởi</th>
-                                <th>Trạm nhận</th>
-                                <th>Ngày gởi</th>
-                                <th>Xe</th>
-                                <th>Loại hàng</th>
-                                <th>Tổng VND</th>
-                                <th>Thanh toán</th>
-                                <th>Nhân viên nhận</th>
-                                <th>Trạng thái</th>
-                                <th>Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody id="warehouseTableBody">
-                            <!-- Dữ liệu sẽ được thêm bằng JavaScript -->
-                        </tbody>
-                    </table>
+                <!-- Thống kê tổng quan -->
+                <div class="statistics-container" id="statistics">
+                    <!-- Thống kê sẽ được thêm bằng JavaScript -->
                 </div>
 
-                <!-- Thống kê kho hàng -->
-                <div class="statistics-container" id="warehouseStatistics">
-                    <!-- Thống kê sẽ được thêm bằng JavaScript -->
+                <!-- Bảng danh sách -->
+                <div class="table-section">
+                    <h3 class="section-title">Danh sách hàng hóa</h3>
+                    <div class="table-container">
+                        <table class="product-table">
+                            <thead>
+                                <tr>
+                                    <th>STT</th>
+                                    <th>MÃ</th>
+                                    <th>NGƯỜI GỬI</th>
+                                    <th>ĐIỆN THOẠI</th>
+                                    <th>NGƯỜI NHẬN</th>
+                                    <th>ĐIỆN THOẠI</th>
+                                    <th>TRẠM GỬI</th>
+                                    <th>TRẠM NHẬN</th>
+                                    <th>LOẠI HÀNG</th>
+                                    <th>TỔNG VND</th>
+                                    <th>TRẠNG THÁI</th>
+                                    <th>NGÀY GỬI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statisticsTableBody">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
         </div>
@@ -124,7 +120,7 @@
     </footer>
 
     <script type="module" src="js/auth.js?v=4.0"></script>
-    <script type="module" src="js/warehouse.js?v=4.0"></script>
+    <script type="module" src="js/statistics.js?v=4.1"></script>
 </body>
 
 </html>

@@ -62,14 +62,25 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('productForm').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
+            e.stopPropagation(); // Ngăn event lan ra ngoài
             showConfirmModal();
         }
     });
 
-    // Xử lý phím ESC để đóng modal
+    // Xử lý phím ESC và Enter cho modal
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            closeConfirmModal();
+        const modal = document.getElementById('confirmModal');
+        const isModalOpen = modal.classList.contains('show');
+
+        if (isModalOpen) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeConfirmModal();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                // Nhấn Enter trong modal = Lưu
+                document.getElementById('btnSave').click();
+            }
         }
     });
 
@@ -91,8 +102,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
-    // Xử lý nút làm mới
-    document.getElementById('resetBtn').addEventListener('click', resetForm);
+    // Xử lý nút làm mới (nếu có)
+    const resetBtn = document.getElementById('resetBtn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', resetForm);
+    }
 
     // Render bảng
     renderTable();
@@ -236,6 +250,11 @@ function showConfirmModal() {
     }
 
     document.getElementById('confirmModal').classList.add('show');
+
+    // Tự động focus vào nút "Lưu" để user có thể nhấn Enter
+    setTimeout(() => {
+        document.getElementById('btnSave').focus();
+    }, 100);
 }
 
 // Đóng modal xác nhận
@@ -286,7 +305,7 @@ async function handleSubmit(shouldPrint = false) {
         station: station, // Trạm nhận hàng
         vehicle: document.getElementById('vehicle').value,
         productType: document.getElementById('productType').value.trim(),
-        insurance: parseInt(document.getElementById('insurance').value) || 0,
+        insurance: parseInt(document.getElementById('insurance')?.value || 0) || 0,
         totalAmount: totalAmount,
         paymentStatus: paymentStatus,
         employee: currentUser ? currentUser.fullName : 'Unknown',
@@ -511,6 +530,18 @@ function resetForm() {
     editRows.forEach(row => row.classList.remove('edit-mode'));
 }
 
+// Kiểm tra xem sản phẩm có phải từ hôm nay không
+function isToday(dateString) {
+    if (!dateString) return false;
+
+    const productDate = new Date(dateString);
+    const today = new Date();
+
+    return productDate.getDate() === today.getDate() &&
+           productDate.getMonth() === today.getMonth() &&
+           productDate.getFullYear() === today.getFullYear();
+}
+
 // Load dữ liệu từ Firestore với real-time listener
 async function loadProducts() {
     // Unsubscribe previous listener if exists
@@ -552,6 +583,11 @@ function renderTable() {
         // Chỉ hiển thị hàng có senderStation được set VÀ bằng trạm hiện tại
         // Nếu senderStation không tồn tại hoặc rỗng, không hiển thị
         if (!product.senderStation) {
+            return false;
+        }
+
+        // Chỉ hiển thị hàng nhập hôm nay
+        if (!isToday(product.sendDate) && !isToday(product.createdAt)) {
             return false;
         }
 
@@ -671,6 +707,10 @@ function updateStatistics(filteredProducts = null) {
             }
             // Chỉ tính sản phẩm có senderStation được set VÀ bằng trạm hiện tại
             if (!product.senderStation) {
+                return false;
+            }
+            // Chỉ tính hàng nhập hôm nay
+            if (!isToday(product.sendDate) && !isToday(product.createdAt)) {
                 return false;
             }
             return product.senderStation === currentUser.station;
