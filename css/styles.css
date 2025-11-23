@@ -726,3 +726,371 @@ body {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* Statistics Cards */
+.stats-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stats-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.12);
+}
+
+.stats-card-title {
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0.8;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stats-card-value {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.2;
+}
+
+.stats-card-detail {
+    font-size: 13px;
+    opacity: 0.7;
+    margin-top: 12px;
+}
+
+/* Improved Header with Logo */
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-image {
+    height: 50px;
+    width: auto;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #F9FAFB;
+    padding: 0;
+    border-top: 1px solid #E5E7EB;
+}
+
+.nav-left {
+    display: flex;
+    gap: 0;
+}
+
+.nav-right {
+    padding: 0 20px;
+}
+
+
+/* Simple Station Badge - No colors */
+.station-badge {
+    color: #1F2937;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 400;
+}
+
+.station-badge strong {
+    font-weight: 600;
+    color: #0EA5E9;
+}
+
+/* Form input row trong bảng */
+.form-input-row {
+    background-color: #EFF6FF;
+    border-left: 3px solid #0EA5E9;
+}
+
+.form-input-row td {
+    padding: 10px 6px;
+    vertical-align: middle;
+}
+
+.form-input-row input,
+.form-input-row select {
+    width: 100%;
+    padding: 7px 4px;
+    border: 1px solid #D1D5DB;
+    border-radius: 4px;
+    font-size: 11px;
+    background-color: #FFFFFF;
+    box-sizing: border-box;
+    transition: all 0.2s;
+}
+
+.form-input-row input[readonly] {
+    background-color: #F3F4F6;
+    cursor: not-allowed;
+    color: #6B7280;
+}
+
+.form-input-row input:focus,
+.form-input-row select:focus {
+    outline: none;
+    border-color: #0EA5E9;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.form-actions {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-start;
+}
+
+/* Editable row styles - Inline editing */
+.data-table tbody tr:not(.form-input-row) {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.data-table tbody tr:not(.form-input-row):hover {
+    background-color: #F9FAFB;
+}
+
+.data-table tbody tr.editing-row {
+    background-color: #FEF3C7;
+    border-left: 3px solid #F59E0B;
+}
+
+.data-table tbody tr.editing-row td {
+    padding: 8px 6px;
+}
+
+/* Editable cell input */
+.editable-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #F59E0B;
+    border-radius: 3px;
+    font-size: 13px;
+    background-color: #FFFFFF;
+    box-sizing: border-box;
+}
+
+.editable-input:focus {
+    outline: none;
+    border-color: #F59E0B;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+/* Edit action buttons */
+.edit-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.btn-save-edit,
+.btn-cancel-edit {
+    padding: 5px 12px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-save-edit {
+    background-color: #10B981;
+    color: white;
+}
+
+.btn-save-edit:hover {
+    background-color: #059669;
+}
+
+.btn-cancel-edit {
+    background-color: #6B7280;
+    color: white;
+}
+
+.btn-cancel-edit:hover {
+    background-color: #4B5563;
+}
+
+/* Column width optimization */
+.data-table th:nth-child(1),
+.data-table td:nth-child(1) {
+    width: 50px;
+    text-align: center;
+}
+
+.data-table th:nth-child(2),
+.data-table td:nth-child(2) {
+    width: 50px;
+    text-align: center;
+}
+
+/* MÃ column */
+.data-table th:nth-child(3),
+.data-table td:nth-child(3) {
+    width: 140px;
+}
+
+/* NGƯỜI GỞI & NGƯỜI NHẬN columns */
+.data-table th:nth-child(4),
+.data-table td:nth-child(4),
+.data-table th:nth-child(6),
+.data-table td:nth-child(6) {
+    width: 140px;
+}
+
+/* Phone columns - very compact */
+.data-table th:nth-child(5),
+.data-table td:nth-child(5),
+.data-table th:nth-child(7),
+.data-table td:nth-child(7) {
+    width: 150px;
+}
+
+/* TRẠM NHẬN column - wider for full station names */
+.data-table th:nth-child(8),
+.data-table td:nth-child(8) {
+    width: 150px;
+    font-size: 11px;
+    padding: 4px;
+}
+
+/* NGÀY GỞI column - more compact */
+.data-table th:nth-child(9),
+.data-table td:nth-child(9) {
+    width: 115px;
+}
+
+/* THANH TOÁN column - very compact */
+.data-table th:nth-child(13),
+.data-table td:nth-child(13) {
+    width: 85px;
+    text-align: center;
+}
+
+/* NHÂN VIÊN NHẬN column - very compact */
+.data-table th:nth-child(14),
+.data-table td:nth-child(14) {
+    width: 95px;
+    text-align: center;
+}
+
+/* THAO TÁC column - more compact */
+.data-table th:nth-child(15),
+.data-table td:nth-child(15) {
+    width: 120px;
+    text-align: center;
+}
+
+/* Checkbox column */
+.data-table th:nth-child(1),
+.data-table td:nth-child(1) {
+    width: 35px;
+    text-align: center;
+}
+
+/* Bulk Edit Panel */
+.bulk-edit-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 3px solid #0EA5E9;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+.bulk-edit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #EFF6FF;
+    border-bottom: 1px solid #D1D5DB;
+}
+
+.bulk-edit-header span {
+    font-weight: 600;
+    color: #1F2937;
+    font-size: 14px;
+}
+
+.btn-close-bulk {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #6B7280;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.btn-close-bulk:hover {
+    background: #D1D5DB;
+    color: #1F2937;
+}
+
+.bulk-edit-body {
+    padding: 20px;
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+}
+
+.bulk-edit-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 200px;
+}
+
+.bulk-edit-field label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #4B5563;
+}
+
+.bulk-edit-field select {
+    padding: 8px 12px;
+    border: 1px solid #D1D5DB;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.bulk-edit-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+/* Row selection highlight */
+tr.selected {
+    background-color: #DBEAFE !important;
+}
+

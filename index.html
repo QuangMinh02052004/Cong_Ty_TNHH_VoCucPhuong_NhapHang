@@ -5,14 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CTY DỊCH VỤ XE DU LỊCH VÕ CÚC PHƯƠNG - Quản lý hàng hóa</title>
-    <link rel="stylesheet" href="css/styles.css?v=2.0">
+    <link rel="stylesheet" href="css/styles.css?v=4.2">
 </head>
 
 <body>
     <header class="header">
         <div class="container">
             <div class="header-top">
-                <h1 class="logo">CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</h1>
+                <div class="logo-container">
+                    <img src="images/logo.png" alt="Logo" class="logo-image">
+                    <h1 class="logo">CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</h1>
+                </div>
                 <div class="user-info">
                     <span id="currentUser">User</span>
                     <span class="separator">|</span>
@@ -20,18 +23,20 @@
                 </div>
             </div>
             <nav class="navbar">
-                <a href="index.html" class="nav-item active">Nhận hàng</a>
-                <a href="warehouse.html" class="nav-item">Kho hàng</a>
-                <a href="statistics.html" class="nav-item">Thống kê</a>
+                <div class="nav-left">
+                    <a href="index.html" class="nav-item active">Nhận hàng</a>
+                    <a href="warehouse.html" class="nav-item">Kho hàng</a>
+                    <a href="statistics.html" class="nav-item">Thống kê</a>
+                </div>
+                <div class="nav-right">
+                    <span class="station-badge">Trạm: <strong class="station-name"></strong></span>
+                </div>
             </nav>
         </div>
     </header>
 
     <main class="main-content">
         <div class="container">
-            <div class="page-header">
-                <h2>Trạm hiện tại: <span class="station-name"></span></h2>
-            </div>
 
             <section class="management-section">
                 <!-- Form tìm kiếm -->
@@ -79,83 +84,96 @@
 
                 <h3 class="section-title">Gửi hàng</h3>
 
-                <!-- Form nhập hàng -->
-                <form id="productForm" class="product-form">
-                    <div class="form-row form-row-single">
-                        <div class="form-group">
-                            <label for="productId">Mã</label>
-                            <input type="text" id="productId" name="productId" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label for="senderName">Người gởi</label>
-                            <input type="text" id="senderName" name="senderName">
-                        </div>
-                        <div class="form-group">
-                            <label for="senderPhone">Điện thoại</label>
-                            <input type="tel" id="senderPhone" name="senderPhone">
-                        </div>
-                        <div class="form-group">
-                            <label for="receiverName">Người nhận</label>
-                            <input type="text" id="receiverName" name="receiverName" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="receiverPhone">Điện thoại</label>
-                            <input type="tel" id="receiverPhone" name="receiverPhone" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="station">Trạm nhận</label>
-                            <select id="station" name="station" required>
-                                <option value="">-- Chọn trạm --</option>
-                                <!-- Options loaded from data/options.js -->
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="vehicle">Xe</label>
-                            <select id="vehicle" name="vehicle">
-                                <option value="">-- Chọn xe --</option>
-                                <!-- Options loaded from data/options.js -->
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="productType">Loại hàng</label>
-                            <select id="productType" name="productType" required>
-                                <option value="">-- Chọn loại hàng --</option>
-                                <!-- Options loaded from data/options.js -->
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="totalAmount">Tổng VND</label>
-                            <input type="number" id="totalAmount" name="totalAmount" required min="0">
-                        </div>
+                <!-- Bảng gửi hàng với form nhập liệu tích hợp -->
+                <form id="productForm">
+                    <div class="form-actions" style="margin-bottom: 15px;">
+                        <button type="submit" class="btn btn-primary">Lưu</button>
+                        <button type="button" class="btn btn-secondary" id="resetBtn">Reset</button>
                     </div>
                 </form>
 
-                <!-- Bảng danh sách hàng hóa -->
+                <!-- Bảng gộp: Form nhập + Danh sách -->
                 <div class="table-wrapper">
                     <table class="data-table" id="productTable">
                         <thead>
                             <tr>
-                                <th>Stt</th>
-                                <th>Mã</th>
-                                <th>Người gởi</th>
-                                <th>Điện thoại</th>
-                                <th>Người nhận</th>
-                                <th>Điện thoại</th>
-                                <th>Trạm nhận</th>
-                                <th>Ngày gởi</th>
-                                <th>Xe</th>
-                                <th>Loại hàng</th>
-                                <th>Bảo hiểm</th>
-                                <th>Tổng VND</th>
-                                <th>Thanh toán</th>
-                                <th>Nhân viên nhận</th>
-                                <th>Thao tác</th>
+                                <th><input type="checkbox" id="selectAll"></th>
+                                <th>STT</th>
+                                <th>MÃ</th>
+                                <th>NGƯỜI GỞI</th>
+                                <th>ĐIỆN THOẠI</th>
+                                <th>NGƯỜI NHẬN</th>
+                                <th>ĐIỆN THOẠI</th>
+                                <th>TRẠM NHẬN</th>
+                                <th>NGÀY GỞI</th>
+                                <th>XE</th>
+                                <th>LOẠI HÀNG</th>
+                                <th>TỔNG VND</th>
+                                <th>THANH TOÁN</th>
+                                <th>NHÂN VIÊN NHẬN</th>
+                                <th>THAO TÁC</th>
                             </tr>
                         </thead>
                         <tbody id="productTableBody">
-                            <!-- Dữ liệu sẽ được thêm bằng JavaScript -->
+                            <!-- Hàng nhập liệu -->
+                            <tr class="form-input-row">
+                                <td>-</td>
+                                <td>-</td>
+                                <td><input type="text" id="productId" name="productId" placeholder="Chọn trạm để sinh mã" readonly form="productForm"></td>
+                                <td><input type="text" id="senderName" name="senderName" placeholder="" form="productForm"></td>
+                                <td><input type="tel" id="senderPhone" name="senderPhone" placeholder="" form="productForm"></td>
+                                <td><input type="text" id="receiverName" name="receiverName" placeholder="" required form="productForm" autofocus></td>
+                                <td><input type="tel" id="receiverPhone" name="receiverPhone" placeholder="" required form="productForm"></td>
+                                <td>
+                                    <select id="station" name="station" required form="productForm">
+                                        <option value="">-- Chọn trạm --</option>
+                                    </select>
+                                </td>
+                                <td>-</td>
+                                <td>
+                                    <select id="vehicle" name="vehicle" form="productForm">
+                                        <option value="">-- Chọn xe --</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select id="productType" name="productType" required form="productForm">
+                                        <option value="">-- Chọn loại hàng --</option>
+                                    </select>
+                                </td>
+                                <td><input type="number" id="totalAmount" name="totalAmount" placeholder="" required min="0" form="productForm"></td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                            </tr>
+                            <!-- Danh sách đã gửi sẽ hiển thị ngay bên dưới -->
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Bulk Edit Panel -->
+                <div id="bulkEditPanel" class="bulk-edit-panel" style="display: none;">
+                    <div class="bulk-edit-header">
+                        <span id="bulkEditCount">0 đơn hàng được chọn</span>
+                        <button class="btn-close-bulk" onclick="closeBulkEdit()">✕</button>
+                    </div>
+                    <div class="bulk-edit-body">
+                        <div class="bulk-edit-field">
+                            <label>Xe:</label>
+                            <select id="bulkVehicle">
+                                <option value="">-- Không thay đổi --</option>
+                            </select>
+                        </div>
+                        <div class="bulk-edit-field">
+                            <label>Loại hàng:</label>
+                            <select id="bulkProductType">
+                                <option value="">-- Không thay đổi --</option>
+                            </select>
+                        </div>
+                        <div class="bulk-edit-actions">
+                            <button class="btn btn-primary" onclick="applyBulkEdit()">Áp dụng</button>
+                            <button class="btn btn-secondary" onclick="closeBulkEdit()">Hủy</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Thống kê -->
@@ -189,8 +207,8 @@
         </div>
     </footer>
 
-    <script type="module" src="js/auth.js?v=4.0"></script>
-    <script type="module" src="js/script.js?v=4.0"></script>
+    <script type="module" src="js/auth.js?v=4.5"></script>
+    <script type="module" src="js/script.js?v=4.6"></script>
 </body>
 
 </html>

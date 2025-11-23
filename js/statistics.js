@@ -237,29 +237,16 @@ function renderStatistics() {
         <div class="stats-summary">
             <div class="stats-header">Thống kê tổng hợp</div>
             <div class="stats-line">
-                <span class="stats-label">Tổng số lượng hàng:</span>
-                <span class="stats-value">${totalShipments} lượt</span>
+                <span class="stats-text">${totalShipments} đơn hàng (Đã giao: ${deliveredProducts.length} | Chưa giao: ${pendingProducts.length})</span>
+            </div>
+            <div class="stats-line stats-paid">
+                Đã giao: <strong>${formatCurrency(deliveredAmount)}đ</strong> / ${formatCurrency(totalAmount)}đ
             </div>
             <div class="stats-line">
-                <span class="stats-label">Đã giao:</span>
-                <span class="stats-value" style="color: #10B981;">${deliveredProducts.length} lượt</span>
+                Chưa giao: <strong>${formatCurrency(pendingAmount)}đ</strong>
             </div>
-            <div class="stats-line">
-                <span class="stats-label">Chưa giao:</span>
-                <span class="stats-value" style="color: #F59E0B;">${pendingProducts.length} lượt</span>
-            </div>
-            <div class="stats-divider"></div>
-            <div class="stats-line">
-                <span class="stats-label">Tổng tiền:</span>
-                <span class="stats-value">${formatCurrency(totalAmount)} VNĐ</span>
-            </div>
-            <div class="stats-line">
-                <span class="stats-label">Tiền hàng đã giao:</span>
-                <span class="stats-value" style="color: #10B981;">${formatCurrency(deliveredAmount)} VNĐ</span>
-            </div>
-            <div class="stats-line">
-                <span class="stats-label">Tiền hàng chưa giao:</span>
-                <span class="stats-value" style="color: #F59E0B;">${formatCurrency(pendingAmount)} VNĐ</span>
+            <div class="stats-line stats-total">
+                Tổng giá trị: <strong>${formatCurrency(totalAmount)}đ</strong>
             </div>
         </div>
     `;

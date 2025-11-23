@@ -110,6 +110,14 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Render bảng
     renderTable();
+
+    // Tự động focus vào ô người nhận khi trang load xong
+    setTimeout(() => {
+        const receiverNameInput = document.getElementById('receiverName');
+        if (receiverNameInput) {
+            receiverNameInput.focus();
+        }
+    }, 200);
 });
 
 // Cập nhật UI với thông tin user
@@ -528,6 +536,11 @@ function resetForm() {
     // Xóa highlight nếu có
     const editRows = document.querySelectorAll('.edit-mode');
     editRows.forEach(row => row.classList.remove('edit-mode'));
+
+    // Tự động focus vào ô người nhận
+    setTimeout(() => {
+        document.getElementById('receiverName').focus();
+    }, 100);
 }
 
 // Kiểm tra xem sản phẩm có phải từ hôm nay không
@@ -561,6 +574,10 @@ async function loadProducts() {
 function renderTable() {
     const tbody = document.getElementById('productTableBody');
     const currentUser = getCurrentUser();
+
+    // Lưu hàng form input (hàng đầu tiên)
+    const formInputRow = tbody.querySelector('.form-input-row');
+    const formInputRowHTML = formInputRow ? formInputRow.outerHTML : '';
 
     console.log('=== RENDER TABLE DEBUG ===');
     console.log('Current User:', currentUser);
@@ -646,19 +663,19 @@ function renderTable() {
         });
     }
 
+    // Render data rows
+    let dataRowsHTML = '';
+
     if (filteredProducts.length === 0) {
-        tbody.innerHTML = `
+        dataRowsHTML = `
             <tr>
                 <td colspan="15" style="text-align: center; padding: 30px; color: #9ca3af;">
                     Chưa có dữ liệu hàng hóa. Vui lòng thêm hàng hóa mới.
                 </td>
             </tr>
         `;
-        updateStatistics(filteredProducts);
-        return;
-    }
-
-    tbody.innerHTML = filteredProducts.map((product, index) => {
+    } else {
+        dataRowsHTML = filteredProducts.map((product, index) => {
         const formattedDate = formatDateTime(product.sendDate || new Date().toISOString());
         const formattedAmount = formatCurrency(product.totalAmount || 0);
 
@@ -669,28 +686,40 @@ function renderTable() {
             '<span class="status-unpaid">Chưa thanh toán</span>';
 
         return `
-            <tr data-id="${product.id || 'unknown'}">
+            <tr data-id="${product.id || 'unknown'}"
+                data-sender-name="${product.senderName || ''}"
+                data-sender-phone="${product.senderPhone || ''}"
+                data-receiver-name="${product.receiverName || ''}"
+                data-receiver-phone="${product.receiverPhone || ''}"
+                data-station="${product.station || ''}"
+                data-vehicle="${product.vehicle || ''}"
+                data-product-type="${product.productType || ''}"
+                data-total-amount="${product.totalAmount || 0}"
+                onclick="enableInlineEdit(this, event)">
+                <td onclick="event.stopPropagation()"><input type="checkbox" class="row-checkbox" value="${product.id}" onchange="handleRowSelection()"></td>
                 <td>${index + 1}</td>
                 <td class="product-code">${product.id || '-'}</td>
-                <td>${product.senderName || '-'}</td>
-                <td>${product.senderPhone || '-'}</td>
-                <td>${product.receiverName || '-'}</td>
-                <td>${product.receiverPhone || '-'}</td>
-                <td class="station-cell">${product.station || '-'}</td>
+                <td class="editable" data-field="senderName">${product.senderName || '-'}</td>
+                <td class="editable" data-field="senderPhone">${product.senderPhone || '-'}</td>
+                <td class="editable" data-field="receiverName">${product.receiverName || '-'}</td>
+                <td class="editable" data-field="receiverPhone">${product.receiverPhone || '-'}</td>
+                <td class="editable" data-field="station">${product.station || '-'}</td>
                 <td>${formattedDate}</td>
-                <td>${product.vehicle || '-'}</td>
-                <td>${product.productType || '-'}</td>
-                <td>${product.insurance || 0}</td>
-                <td class="amount-cell">${formattedAmount}</td>
+                <td class="editable" data-field="vehicle">${product.vehicle || '-'}</td>
+                <td class="editable" data-field="productType">${product.productType || '-'}</td>
+                <td class="editable" data-field="totalAmount">${formattedAmount}</td>
                 <td>${paymentStatusText}</td>
                 <td>${product.employee || '-'}</td>
-                <td class="action-cell">
-                    <button class="btn btn-edit" onclick="editProduct('${product.id}')">Sửa</button>
+                <td class="action-cell" onclick="event.stopPropagation()">
                     <button class="btn btn-danger" onclick="deleteProductHandler('${product.id}')">Xóa</button>
                 </td>
             </tr>
         `;
-    }).join('');
+        }).join('');
+    }
+
+    // Kết hợp form input row với data rows
+    tbody.innerHTML = formInputRowHTML + dataRowsHTML;
 
     // Cập nhật thống kê
     updateStatistics(filteredProducts);
@@ -888,6 +917,349 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// ===== INLINE EDITING FUNCTIONS =====
+
+let currentEditingRow = null;
+
+// Enable inline edit mode for a row
+function enableInlineEdit(row, event) {
+    // Prevent editing if clicking on action buttons
+    if (event.target.closest('.action-cell') || event.target.closest('button')) {
+        return;
+    }
+
+    // If already editing another row, save it first
+    if (currentEditingRow && currentEditingRow !== row) {
+        const currentProductId = currentEditingRow.dataset.id;
+        saveInlineEdit(currentProductId);
+    }
+
+    // If clicking on the same row that's already editing, do nothing
+    if (row.classList.contains('editing-row')) {
+        return;
+    }
+
+    // Mark row as editing
+    row.classList.add('editing-row');
+    currentEditingRow = row;
+
+    const productId = row.dataset.id;
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    // Convert editable cells to inputs
+    const editableCells = row.querySelectorAll('.editable');
+    editableCells.forEach(cell => {
+        const field = cell.dataset.field;
+        let value = product[field] || '';
+
+        // Remove formatting for totalAmount
+        if (field === 'totalAmount') {
+            value = product[field] || 0;
+        }
+
+        // Create appropriate input based on field type
+        if (field === 'station' || field === 'vehicle' || field === 'productType') {
+            // Create select dropdown
+            let options = [];
+            if (field === 'station') {
+                options = OPTIONS.stations || [];
+            } else if (field === 'vehicle') {
+                options = OPTIONS.vehicles || [];
+            } else if (field === 'productType') {
+                options = OPTIONS.productTypes || [];
+            }
+
+            const select = document.createElement('select');
+            select.className = 'editable-input';
+            select.innerHTML = options.map(opt =>
+                `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`
+            ).join('');
+
+            // Auto-save on change
+            select.addEventListener('change', () => {
+                saveInlineEdit(productId);
+            });
+
+            cell.innerHTML = '';
+            cell.appendChild(select);
+        } else {
+            // Create text or number input
+            const input = document.createElement('input');
+            input.type = field === 'totalAmount' ? 'number' :
+                         (field.includes('Phone') ? 'tel' : 'text');
+            input.className = 'editable-input';
+            input.value = value;
+
+            // Auto-save on Enter key
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveInlineEdit(productId);
+                } else if (e.key === 'Escape') {
+                    cancelInlineEdit();
+                }
+            });
+
+            cell.innerHTML = '';
+            cell.appendChild(input);
+
+            // Auto-focus first input
+            if (editableCells[0] === cell) {
+                input.focus();
+            }
+        }
+    });
+
+    // Remove row click handler while editing
+    row.onclick = null;
+
+    // Add document click handler to save when clicking outside
+    setupClickOutsideHandler(row, productId);
+}
+
+// Setup click outside handler
+function setupClickOutsideHandler(row, productId) {
+    // Remove previous handler if exists
+    if (window.clickOutsideHandler) {
+        document.removeEventListener('click', window.clickOutsideHandler);
+    }
+
+    // Create new handler
+    window.clickOutsideHandler = function(event) {
+        // If clicking outside the editing row
+        if (currentEditingRow && !currentEditingRow.contains(event.target)) {
+            // Don't save if clicking on another data row (it will trigger its own edit)
+            const clickedRow = event.target.closest('tr');
+            const isDataRow = clickedRow && clickedRow.dataset.id && !clickedRow.classList.contains('form-input-row');
+
+            if (!isDataRow) {
+                // Save the current editing row
+                saveInlineEdit(productId);
+            }
+        }
+    };
+
+    // Add the handler
+    setTimeout(() => {
+        document.addEventListener('click', window.clickOutsideHandler);
+    }, 100);
+}
+
+// Save inline edit
+async function saveInlineEdit(productId) {
+    if (!currentEditingRow) return;
+
+    const row = currentEditingRow;
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    // Collect updated values from inputs
+    const updates = {};
+    const editableCells = row.querySelectorAll('.editable');
+
+    editableCells.forEach(cell => {
+        const field = cell.dataset.field;
+        const input = cell.querySelector('input, select');
+        if (input) {
+            let value = input.value;
+
+            // Convert totalAmount to number
+            if (field === 'totalAmount') {
+                value = parseFloat(value) || 0;
+            }
+
+            updates[field] = value;
+        }
+    });
+
+    try {
+        // Update in Firestore
+        await updateProduct(productId, updates);
+
+        // Update local product object
+        Object.assign(product, updates);
+
+        // Show success notification
+        showNotification('Cập nhật thành công!', 'success');
+
+        // Re-render table
+        renderTable();
+
+        // Cleanup click handler
+        if (window.clickOutsideHandler) {
+            document.removeEventListener('click', window.clickOutsideHandler);
+            window.clickOutsideHandler = null;
+        }
+
+        currentEditingRow = null;
+    } catch (error) {
+        console.error('Error updating product:', error);
+        showNotification('Lỗi khi cập nhật: ' + error.message, 'error');
+    }
+}
+
+// Cancel inline edit
+function cancelInlineEdit() {
+    if (!currentEditingRow) return;
+
+    // Re-render table to restore original state
+    renderTable();
+
+    // Cleanup click handler
+    if (window.clickOutsideHandler) {
+        document.removeEventListener('click', window.clickOutsideHandler);
+        window.clickOutsideHandler = null;
+    }
+
+    currentEditingRow = null;
+}
+
+// ===== BULK EDIT FUNCTIONS =====
+
+// Handle row selection
+function handleRowSelection() {
+    const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+    const selectedCount = checkboxes.length;
+
+    // Update select all checkbox
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const allCheckboxes = document.querySelectorAll('.row-checkbox');
+    selectAllCheckbox.checked = selectedCount === allCheckboxes.length && selectedCount > 0;
+
+    // Show/hide bulk edit panel
+    const bulkPanel = document.getElementById('bulkEditPanel');
+    const countSpan = document.getElementById('bulkEditCount');
+
+    if (selectedCount > 0) {
+        bulkPanel.style.display = 'block';
+        countSpan.textContent = `${selectedCount} đơn hàng được chọn`;
+
+        // Highlight selected rows
+        document.querySelectorAll('tr[data-id]').forEach(row => {
+            const checkbox = row.querySelector('.row-checkbox');
+            if (checkbox && checkbox.checked) {
+                row.classList.add('selected');
+            } else {
+                row.classList.remove('selected');
+            }
+        });
+    } else {
+        bulkPanel.style.display = 'none';
+        document.querySelectorAll('tr.selected').forEach(row => row.classList.remove('selected'));
+    }
+}
+
+// Select all checkbox handler
+document.addEventListener('DOMContentLoaded', () => {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.row-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = this.checked;
+            });
+            handleRowSelection();
+        });
+    }
+
+    // Populate bulk edit dropdowns
+    populateBulkEditOptions();
+});
+
+// Populate bulk edit dropdown options
+function populateBulkEditOptions() {
+    const bulkVehicle = document.getElementById('bulkVehicle');
+    const bulkProductType = document.getElementById('bulkProductType');
+
+    if (bulkVehicle && OPTIONS.vehicles) {
+        OPTIONS.vehicles.forEach(vehicle => {
+            const option = document.createElement('option');
+            option.value = vehicle;
+            option.textContent = vehicle;
+            bulkVehicle.appendChild(option);
+        });
+    }
+
+    if (bulkProductType && OPTIONS.productTypes) {
+        OPTIONS.productTypes.forEach(type => {
+            const option = document.createElement('option');
+            option.value = type;
+            option.textContent = type;
+            bulkProductType.appendChild(option);
+        });
+    }
+}
+
+// Apply bulk edit
+async function applyBulkEdit() {
+    const checkboxes = document.querySelectorAll('.row-checkbox:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (selectedIds.length === 0) {
+        showNotification('Vui lòng chọn ít nhất 1 đơn hàng', 'error');
+        return;
+    }
+
+    const bulkVehicle = document.getElementById('bulkVehicle').value;
+    const bulkProductType = document.getElementById('bulkProductType').value;
+
+    const updates = {};
+    if (bulkVehicle) updates.vehicle = bulkVehicle;
+    if (bulkProductType) updates.productType = bulkProductType;
+
+    if (Object.keys(updates).length === 0) {
+        showNotification('Vui lòng chọn ít nhất 1 trường để cập nhật', 'error');
+        return;
+    }
+
+    try {
+        // Update each selected product
+        const updatePromises = selectedIds.map(id => updateProduct(id, updates));
+        await Promise.all(updatePromises);
+
+        // Update local products array
+        selectedIds.forEach(id => {
+            const product = products.find(p => p.id === id);
+            if (product) {
+                Object.assign(product, updates);
+            }
+        });
+
+        showNotification(`Đã cập nhật ${selectedIds.length} đơn hàng thành công!`, 'success');
+
+        // Close bulk edit and re-render
+        closeBulkEdit();
+        renderTable();
+    } catch (error) {
+        console.error('Error bulk updating:', error);
+        showNotification('Lỗi khi cập nhật hàng loạt: ' + error.message, 'error');
+    }
+}
+
+// Close bulk edit panel
+function closeBulkEdit() {
+    // Uncheck all checkboxes
+    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('selectAll').checked = false;
+
+    // Reset dropdowns
+    document.getElementById('bulkVehicle').value = '';
+    document.getElementById('bulkProductType').value = '';
+
+    // Hide panel
+    document.getElementById('bulkEditPanel').style.display = 'none';
+
+    // Remove selection highlights
+    document.querySelectorAll('tr.selected').forEach(row => row.classList.remove('selected'));
+}
+
 // Export functions to global scope
 window.editProduct = editProduct;
 window.deleteProductHandler = deleteProductHandler;
+window.enableInlineEdit = enableInlineEdit;
+window.saveInlineEdit = saveInlineEdit;
+window.cancelInlineEdit = cancelInlineEdit;
+window.handleRowSelection = handleRowSelection;
+window.applyBulkEdit = applyBulkEdit;
+window.closeBulkEdit = closeBulkEdit;

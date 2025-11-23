@@ -5,14 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thống kê - CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</title>
-    <link rel="stylesheet" href="css/styles.css?v=2.0">
+    <link rel="stylesheet" href="css/styles.css?v=4.2">
 </head>
 
 <body>
     <header class="header">
         <div class="container">
             <div class="header-top">
-                <h1 class="logo">CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</h1>
+                <div class="logo-container">
+                    <img src="images/logo.png" alt="Logo" class="logo-image">
+                    <h1 class="logo">CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</h1>
+                </div>
                 <div class="user-info">
                     <span id="currentUser">User</span>
                     <span class="separator">|</span>
@@ -20,19 +23,20 @@
                 </div>
             </div>
             <nav class="navbar">
-                <a href="index.html" class="nav-item">Nhận hàng</a>
-                <a href="warehouse.html" class="nav-item">Kho hàng</a>
-                <a href="statistics.html" class="nav-item active">Thống kê</a>
+                <div class="nav-left">
+                    <a href="index.html" class="nav-item">Nhận hàng</a>
+                    <a href="warehouse.html" class="nav-item">Kho hàng</a>
+                    <a href="statistics.html" class="nav-item active">Thống kê</a>
+                </div>
+                <div class="nav-right">
+                    <span class="station-badge">Trạm: <strong class="station-name"></strong></span>
+                </div>
             </nav>
         </div>
     </header>
 
     <main class="main-content">
         <div class="container">
-            <div class="page-header">
-                <h2>Thống kê tổng hợp</h2>
-                <p style="color: #6B7280; margin-top: 8px;">Tổng hợp tất cả hàng hóa từ mọi trạm</p>
-            </div>
 
             <section class="management-section">
                 <!-- Form tìm kiếm -->
@@ -77,16 +81,11 @@
                     </form>
                 </div>
 
-                <!-- Thống kê tổng quan -->
-                <div class="statistics-container" id="statistics">
-                    <!-- Thống kê sẽ được thêm bằng JavaScript -->
-                </div>
-
-                <!-- Bảng danh sách -->
+                <!-- Bảng danh sách - Hiển thị trước -->
                 <div class="table-section">
                     <h3 class="section-title">Danh sách hàng hóa</h3>
                     <div class="table-container">
-                        <table class="product-table">
+                        <table class="data-table" id="statisticsTable">
                             <thead>
                                 <tr>
                                     <th>STT</th>
@@ -109,6 +108,11 @@
                         </table>
                     </div>
                 </div>
+
+                <!-- Thống kê tổng quan - Hiển thị sau (dưới cùng) -->
+                <div class="statistics-container" id="statistics" style="margin-top: 30px;">
+                    <!-- Thống kê sẽ được thêm bằng JavaScript -->
+                </div>
             </section>
         </div>
     </main>
@@ -120,7 +124,7 @@
     </footer>
 
     <script type="module" src="js/auth.js?v=4.0"></script>
-    <script type="module" src="js/statistics.js?v=4.1"></script>
+    <script type="module" src="js/statistics.js?v=4.4"></script>
 </body>
 
 </html>

@@ -5,14 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kho hàng - CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</title>
-    <link rel="stylesheet" href="css/styles.css?v=2.0">
+    <link rel="stylesheet" href="css/styles.css?v=4.2">
 </head>
 
 <body>
     <header class="header">
         <div class="container">
             <div class="header-top">
-                <h1 class="logo">CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</h1>
+                <div class="logo-container">
+                    <img src="images/logo.png" alt="Logo" class="logo-image">
+                    <h1 class="logo">CTY DV XE DU LỊCH VÕ CÚC PHƯƠNG</h1>
+                </div>
                 <div class="user-info">
                     <span id="currentUser">User</span>
                     <span class="separator">|</span>
@@ -20,19 +23,21 @@
                 </div>
             </div>
             <nav class="navbar">
-                <a href="index.html" class="nav-item">Nhận hàng</a>
-                <a href="warehouse.html" class="nav-item active">Kho hàng</a>
-                <a href="statistics.html" class="nav-item">Thống kê</a>
+                <div class="nav-left">
+                    <a href="index.html" class="nav-item">Nhận hàng</a>
+                    <a href="warehouse.html" class="nav-item active">Kho hàng</a>
+                    <a href="statistics.html" class="nav-item">Thống kê</a>
+                </div>
+                <div class="nav-right">
+                    <span class="station-badge">Trạm: <strong class="station-name"
+                            id="currentStationName"></strong></span>
+                </div>
             </nav>
         </div>
     </header>
 
     <main class="main-content">
         <div class="container">
-            <div class="page-header">
-                <h2>Kho hàng - Trạm: <span class="station-name" id="currentStationName"></span></h2>
-                <p style="color: #6B7280; margin-top: 8px;">Hiển thị hàng hóa từ các trạm khác</p>
-            </div>
 
             <section class="management-section">
                 <!-- Form tìm kiếm -->
