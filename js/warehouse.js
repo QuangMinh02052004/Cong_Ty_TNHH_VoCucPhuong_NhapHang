@@ -2,13 +2,32 @@
 import {
     getAllProducts,
     updateProduct
-} from './firebase-db.js';
+} from './api.js';
 
 import { populateSelect, OPTIONS } from '../data/options.js';
 
 let allProducts = [];
 let currentUserStation = '';
 let searchFilters = {}; // Bộ lọc tìm kiếm
+
+// ✅ FIX: Helper function để parse date không bị convert timezone
+function parseLocalDate(dateString) {
+    if (!dateString) return new Date();
+    // Bỏ Z suffix và timezone offset để giữ nguyên giờ
+    const cleanDateStr = String(dateString).replace('Z', '').replace(/[+-]\d{2}:\d{2}$/, '');
+    return new Date(cleanDateStr);
+}
+
+// ✅ FIX: Format date cho hiển thị (không bị convert timezone)
+function formatSendDate(dateString) {
+    const date = parseLocalDate(dateString);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${hours}h${minutes} - ${day}/${month}/${year}`;
+}
 
 // Khởi tạo
 document.addEventListener('DOMContentLoaded', async function () {
@@ -87,7 +106,7 @@ function resetSearch() {
 function isToday(dateString) {
     if (!dateString) return false;
 
-    const productDate = new Date(dateString);
+    const productDate = parseLocalDate(dateString);
     const today = new Date();
 
     return productDate.getDate() === today.getDate() &&
@@ -103,36 +122,36 @@ async function loadAllProducts() {
 // Render bảng warehouse - chỉ hiển thị hàng từ trạm khác gửi đến trạm hiện tại
 function renderWarehouseTable() {
     const tbody = document.getElementById('warehouseTableBody');
+    const currentUser = getCurrentUser();
 
     console.log('=== WAREHOUSE DEBUG ===');
     console.log('Current Station:', currentUserStation);
+    console.log('User Role:', currentUser?.role);
     console.log('Total products:', allProducts.length);
 
     // Filter: Chỉ hiển thị hàng có trạm nhận = trạm hiện tại
     // và trạm gửi khác trạm hiện tại (tức là từ trạm khác gửi đến)
     let filteredProducts = allProducts.filter(product => {
-        // Nếu không có station của user, hiển thị tất cả
+        // ✅ Chỉ hiển thị hàng trong ngày hôm nay (áp dụng cho TẤT CẢ user, kể cả admin)
+        if (!isToday(product.sendDate) && !isToday(product.createdAt)) {
+            return false;
+        }
+
+        // ✅ Admin có quyền xem TẤT CẢ đơn hàng từ mọi trạm (chỉ trong ngày)
+        if (currentUser && currentUser.role === 'admin') {
+            return true;
+        }
+
+        // Nếu không có station của user, hiển thị tất cả trong ngày
         if (!currentUserStation) {
-            console.log('No current station - showing all');
             return true;
         }
 
         const destinationStation = product.station || ''; // Trạm nhận
         const senderStation = product.senderStation || ''; // Trạm gửi
 
-        // Debug first few products
-        if (allProducts.indexOf(product) < 3) {
-            console.log(`Product ${product.id}: destination="${destinationStation}", sender="${senderStation}", current="${currentUserStation}"`);
-            console.log(`  Match: dest==current? ${destinationStation === currentUserStation}, sender!=current? ${senderStation !== currentUserStation}`);
-        }
-
-        // Chỉ hiển thị hàng có senderStation VÀ destination = trạm hiện tại VÀ sender khác trạm hiện tại
+        // Chỉ hiển thị hàng có senderStation
         if (!senderStation) {
-            return false; // Không hiển thị hàng không có senderStation
-        }
-
-        // Chỉ hiển thị hàng nhập hôm nay
-        if (!isToday(product.sendDate) && !isToday(product.createdAt)) {
             return false;
         }
 
@@ -163,12 +182,12 @@ function renderWarehouseTable() {
 
             // Filter by date range
             if (searchFilters.dateFrom) {
-                const productDate = new Date(product.sendDate);
+                const productDate = parseLocalDate(product.sendDate);
                 const fromDate = new Date(searchFilters.dateFrom);
                 if (productDate < fromDate) return false;
             }
             if (searchFilters.dateTo) {
-                const productDate = new Date(product.sendDate);
+                const productDate = parseLocalDate(product.sendDate);
                 const toDate = new Date(searchFilters.dateTo);
                 if (productDate > toDate) return false;
             }
@@ -204,21 +223,19 @@ function renderWarehouseTable() {
     }
 
     // Sắp xếp theo ngày gởi (mới nhất trước)
-    filteredProducts.sort((a, b) => new Date(b.sendDate) - new Date(a.sendDate));
+    filteredProducts.sort((a, b) => parseLocalDate(b.sendDate) - parseLocalDate(a.sendDate));
 
     tbody.innerHTML = filteredProducts.map((product, index) => {
-        const sendDate = new Date(product.sendDate).toLocaleDateString('vi-VN');
+        const sendDate = formatSendDate(product.sendDate);
         const paymentBadge = product.paymentStatus === 'paid'
-            ? '<span class="status-badge status-active">Đã thu</span>'
+            ? `<span class="status-badge status-active">Đã thu: ${formatCurrency(product.totalAmount)}đ</span>`
             : '<span class="status-badge status-inactive">Chưa thu</span>';
 
         const deliveryStatus = product.deliveryStatus || 'pending';
-        const deliveryStatusText = deliveryStatus === 'delivered' ? 'Đã giao' : 'Chưa giao';
-        const deliveryStatusClass = deliveryStatus === 'delivered' ? 'status-delivered' : 'status-pending';
+        const deliveryStatusInfo = getDeliveryStatusInfo(deliveryStatus);
 
-        const deliveryActions = deliveryStatus === 'delivered'
-            ? `<button class="btn-deliver btn-mark-pending" onclick="updateDeliveryStatus('${product.id}', 'pending')">Chưa giao</button>`
-            : `<button class="btn-deliver btn-mark-delivered" onclick="updateDeliveryStatus('${product.id}', 'delivered')">Đã giao</button>`;
+        // Nút mở modal chọn trạng thái
+        const deliveryActions = `<button class="btn-status-action" onclick="openStatusModal('${product.id}', '${deliveryStatus}')">Cập nhật</button>`;
 
         return `
             <tr>
@@ -236,7 +253,7 @@ function renderWarehouseTable() {
                 <td>${formatCurrency(product.totalAmount)}</td>
                 <td>${paymentBadge}</td>
                 <td>${product.createdBy || '-'}</td>
-                <td><span class="delivery-status ${deliveryStatusClass}">${deliveryStatusText}</span></td>
+                <td><span class="delivery-status ${deliveryStatusInfo.class}">${deliveryStatusInfo.text}</span></td>
                 <td>${deliveryActions}</td>
             </tr>
         `;
@@ -246,9 +263,20 @@ function renderWarehouseTable() {
 // Render statistics
 function renderWarehouseStatistics() {
     const statsElement = document.getElementById('warehouseStatistics');
+    const currentUser = getCurrentUser();
 
     // Filter products for current station (same logic as table)
     const filteredProducts = allProducts.filter(product => {
+        // ✅ Chỉ tính hàng trong ngày hôm nay
+        if (!isToday(product.sendDate) && !isToday(product.createdAt)) {
+            return false;
+        }
+
+        // ✅ Admin thấy tất cả đơn hàng trong ngày
+        if (currentUser && currentUser.role === 'admin') {
+            return true;
+        }
+
         if (!currentUserStation) return true;
 
         const destinationStation = product.station || '';
@@ -259,31 +287,39 @@ function renderWarehouseStatistics() {
             return false;
         }
 
-        // Chỉ tính hàng nhập hôm nay
-        if (!isToday(product.sendDate) && !isToday(product.createdAt)) {
-            return false;
-        }
-
         return destinationStation === currentUserStation &&
                senderStation !== currentUserStation;
     });
 
     const totalShipments = filteredProducts.length;
-    const paidProducts = filteredProducts.filter(p => p.paymentStatus === 'paid');
-    const unpaidProducts = filteredProducts.filter(p => p.paymentStatus === 'unpaid');
 
-    const totalPaidAmount = paidProducts.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
-    const totalUnpaidAmount = unpaidProducts.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
-    const totalAmount = totalPaidAmount + totalUnpaidAmount;
+    // Chỉ tính "Đã thu" khi: deliveryStatus = 'delivered' VÀ paymentStatus = 'paid'
+    const deliveredAndPaid = filteredProducts.filter(p =>
+        p.deliveryStatus === 'delivered' && p.paymentStatus === 'paid'
+    );
+    const totalCollectedAmount = deliveredAndPaid.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+
+    // Tổng giá trị tất cả đơn hàng
+    const totalAmount = filteredProducts.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+
+    // Số đơn chưa giao/chưa thu
+    const pendingCount = filteredProducts.filter(p => p.deliveryStatus !== 'delivered').length;
+
+    const isAdmin = currentUser && currentUser.role === 'admin';
+    const stationLabel = isAdmin ? 'Tất cả trạm' : currentUserStation;
+    const shipmentLabel = isAdmin ? `${totalShipments} đơn hàng hôm nay` : `${totalShipments} đơn hàng từ trạm khác`;
 
     statsElement.innerHTML = `
         <div class="stats-summary">
-            <div class="stats-header">Thống kê kho hàng - Trạm: ${currentUserStation}</div>
+            <div class="stats-header">Thống kê kho hàng - ${stationLabel}</div>
             <div class="stats-line">
-                <span class="stats-text">${totalShipments} đơn hàng từ trạm khác</span>
+                <span class="stats-text">${shipmentLabel}</span>
             </div>
             <div class="stats-line stats-paid">
-                Đã thu: <strong>${formatCurrency(totalPaidAmount)}đ</strong> / ${formatCurrency(totalAmount)}đ
+                Đã thu (đã giao): <strong>${formatCurrency(totalCollectedAmount)}đ</strong> (${deliveredAndPaid.length} đơn)
+            </div>
+            <div class="stats-line" style="color: #F59E0B;">
+                Chưa giao: <strong>${pendingCount} đơn</strong>
             </div>
             <div class="stats-line stats-total">
                 Tổng giá trị hàng: <strong>${formatCurrency(totalAmount)}đ</strong>
@@ -303,24 +339,250 @@ function formatStationName(station) {
     return station.includes(' - ') ? station.split(' - ')[1] : station;
 }
 
+// Lấy thông tin trạng thái giao hàng
+function getDeliveryStatusInfo(status) {
+    const statusMap = {
+        'pending': { text: 'Chờ xử lý', class: 'status-pending' },
+        'waiting_send': { text: 'Chờ gởi', class: 'status-waiting-send' },
+        'waiting_receive': { text: 'Chờ nhận', class: 'status-waiting-receive' },
+        'lost': { text: 'Thất lạc', class: 'status-lost' },
+        'no_contact': { text: 'Không liên lạc', class: 'status-no-contact' },
+        'delivered': { text: 'Đã giao', class: 'status-delivered' }
+    };
+    return statusMap[status] || statusMap['pending'];
+}
+
+// Biến lưu productId và thông tin sản phẩm hiện tại đang chọn
+let currentEditingProductId = null;
+let currentEditingProduct = null;
+
+// Mở modal chọn trạng thái
+function openStatusModal(productId, currentStatus) {
+    currentEditingProductId = productId;
+    // Tìm sản phẩm trong danh sách
+    currentEditingProduct = allProducts.find(p => p.id === productId);
+
+    const statusOptions = [
+        { value: 'pending', label: 'Chờ xử lý' },
+        { value: 'waiting_send', label: 'Chờ gởi' },
+        { value: 'waiting_receive', label: 'Chờ nhận' },
+        { value: 'lost', label: 'Thất lạc' },
+        { value: 'no_contact', label: 'Không liên lạc' },
+        { value: 'delivered', label: 'Đã giao' }
+    ];
+
+    const grid = document.getElementById('statusGrid');
+    grid.innerHTML = statusOptions.map(option => `
+        <div class="status-grid-item ${currentStatus === option.value ? 'active' : ''}"
+             onclick="selectStatus('${option.value}')">
+            ${option.label}
+        </div>
+    `).join('');
+
+    // Ẩn phần nhập tiền
+    document.getElementById('deliveredAmountSection').style.display = 'none';
+    document.getElementById('statusGrid').style.display = 'flex';
+
+    document.getElementById('statusModalOverlay').classList.add('show');
+}
+
+// Đóng modal
+function closeStatusModal() {
+    document.getElementById('statusModalOverlay').classList.remove('show');
+    document.getElementById('deliveredAmountSection').style.display = 'none';
+    document.getElementById('statusGrid').style.display = 'flex';
+    currentEditingProductId = null;
+    currentEditingProduct = null;
+}
+
+// Chọn trạng thái và cập nhật
+async function selectStatus(status) {
+    if (!currentEditingProductId) return;
+
+    // Nếu chọn "Đã giao" -> luôn hiện form nhập tiền để có thể xem/sửa
+    if (status === 'delivered' && currentEditingProduct) {
+        document.getElementById('statusGrid').style.display = 'none';
+        document.getElementById('deliveredAmountSection').style.display = 'block';
+
+        // Hiển thị thông tin đơn hàng để đối chiếu
+        document.getElementById('infoProductId').textContent = currentEditingProduct.id || '-';
+        document.getElementById('infoReceiverName').textContent = currentEditingProduct.receiverName || '-';
+        document.getElementById('infoReceiverPhone').textContent = currentEditingProduct.receiverPhone || '-';
+        document.getElementById('infoCurrentAmount').textContent = formatCurrency(currentEditingProduct.totalAmount || 0) + 'đ';
+
+        // Đặt giá trị mặc định là tổng tiền của đơn hàng (hoặc 0)
+        const amountInput = document.getElementById('deliveredAmount');
+        amountInput.value = currentEditingProduct.totalAmount || 0;
+        document.getElementById('deliveredNote').value = currentEditingProduct.notes || '';
+        // Focus và select all để có thể nhập ngay
+        setTimeout(() => {
+            amountInput.focus();
+            amountInput.select();
+        }, 100);
+        return;
+    }
+
+    await updateDeliveryStatus(currentEditingProductId, status);
+    closeStatusModal();
+}
+
+// Xác nhận đã giao (với số tiền thu)
+async function confirmDelivered() {
+    if (!currentEditingProductId) return;
+
+    const amount = document.getElementById('deliveredAmount').value;
+    const note = document.getElementById('deliveredNote').value;
+
+    // Không cho phép số tiền = 0
+    const parsedAmount = parseFloat(amount) || 0;
+    if (parsedAmount <= 0) {
+        showToast('Vui lòng nhập số tiền đã thu (phải lớn hơn 0đ)', 'error');
+        document.getElementById('deliveredAmount').focus();
+        document.getElementById('deliveredAmount').select();
+        return;
+    }
+
+    // Cập nhật trạng thái + thanh toán + số tiền thu + ghi chú
+    try {
+        const updateData = {
+            deliveryStatus: 'delivered',
+            paymentStatus: 'paid',
+            totalAmount: parsedAmount
+        };
+
+        if (note) {
+            updateData.notes = note;
+        }
+
+        const result = await updateProduct(currentEditingProductId, updateData);
+
+        if (result && result.success) {
+            await loadAllProducts();
+            renderWarehouseTable();
+            renderWarehouseStatistics();
+            showToast(`Đã giao & thu ${formatCurrency(amount)}đ`);
+            closeStatusModal();
+        } else if (result?.code === 'EDIT_TIME_EXPIRED') {
+            // Hết thời gian sửa giá - hiển thị thông báo đặc biệt
+            showToast('Đã quá 1 phút! Vui lòng hủy đơn và tạo lại nếu cần sửa giá.', 'error');
+            closeStatusModal();
+        } else {
+            showToast('Lỗi: ' + (result?.message || result?.error || 'Không xác định'), 'error');
+        }
+    } catch (error) {
+        console.error('Error confirming delivery:', error);
+        showToast('Có lỗi khi xác nhận giao hàng', 'error');
+        closeStatusModal();
+    }
+}
+
+// Đóng modal khi click ra ngoài
+document.addEventListener('click', function(e) {
+    const overlay = document.getElementById('statusModalOverlay');
+    if (e.target === overlay) {
+        closeStatusModal();
+    }
+});
+
+// Khi bấm vào ô số tiền, tự động select all để nhập ngay
+// Và xử lý phím Enter để xác nhận, ESC để đóng
+document.addEventListener('DOMContentLoaded', function() {
+    const amountInput = document.getElementById('deliveredAmount');
+    const noteInput = document.getElementById('deliveredNote');
+
+    if (amountInput) {
+        amountInput.addEventListener('focus', function() {
+            this.select();
+        });
+
+        // Nhấn Enter để xác nhận
+        amountInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmDelivered();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeStatusModal();
+            }
+        });
+    }
+
+    // Xử lý Enter và ESC trên ô ghi chú
+    if (noteInput) {
+        noteInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmDelivered();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                closeStatusModal();
+            }
+        });
+    }
+});
+
+// Đóng modal khi nhấn ESC ở bất kỳ đâu
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const overlay = document.getElementById('statusModalOverlay');
+        if (overlay && overlay.classList.contains('show')) {
+            e.preventDefault();
+            closeStatusModal();
+        }
+    }
+});
+
+// Hiển thị toast notification
+function showToast(message, type = 'success') {
+    // Tạo container nếu chưa có
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    // Tạo toast
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    // Tự động xóa sau 2 giây
+    setTimeout(() => {
+        toast.remove();
+    }, 2000);
+}
+
 // Update delivery status
 async function updateDeliveryStatus(productId, status) {
     try {
-        await updateProduct(productId, { deliveryStatus: status });
+        console.log('Updating delivery status:', productId, status);
+        const result = await updateProduct(productId, { deliveryStatus: status });
+        console.log('Update result:', result);
 
-        // Reload products and re-render
-        await loadAllProducts();
-        renderWarehouseTable();
-        renderWarehouseStatistics();
+        if (result && result.success) {
+            // Reload products and re-render
+            await loadAllProducts();
+            renderWarehouseTable();
+            renderWarehouseStatistics();
 
-        const statusText = status === 'delivered' ? 'đã giao' : 'chưa giao';
-        alert(`Đã cập nhật trạng thái thành "${statusText}"`);
+            // Lấy tên trạng thái để hiển thị
+            const statusInfo = getDeliveryStatusInfo(status);
+            showToast(`Đã cập nhật: "${statusInfo.text}"`);
+        } else {
+            showToast('Lỗi: ' + (result?.error || 'Không xác định'), 'error');
+        }
     } catch (error) {
         console.error('Error updating delivery status:', error);
-        alert('Có lỗi khi cập nhật trạng thái. Vui lòng thử lại.');
+        showToast('Có lỗi khi cập nhật trạng thái', 'error');
     }
 }
 
 // Export functions to global scope if needed
 window.loadAllProducts = loadAllProducts;
 window.updateDeliveryStatus = updateDeliveryStatus;
+window.openStatusModal = openStatusModal;
+window.closeStatusModal = closeStatusModal;
+window.selectStatus = selectStatus;
+window.confirmDelivered = confirmDelivered;
